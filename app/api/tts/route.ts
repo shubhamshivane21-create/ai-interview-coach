@@ -1,9 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,30 +6,48 @@ export async function POST(req: NextRequest) {
 
     if (!text) {
       return NextResponse.json(
-        { error: 'No text provided' },
+        { error: "No text provided" },
         { status: 400 }
       );
     }
 
-    const mp3 = await openai.audio.speech.create({
-      model: 'tts-1',
-      voice: 'alloy',
-      input: text,
-    });
+    const response = await fetch(
+      `https://texttospeech.googleapis.com/v1/text:synthesize?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          input: { text },
+          voice: {
+            languageCode: "en-US",
+            ssmlGender: "NEUTRAL",
+          },
+          audioConfig: {
+            audioEncoding: "MP3",
+          },
+        }),
+      }
+    );
 
-    const buffer = Buffer.from(await mp3.arrayBuffer());
+    const data = await response.json();
 
-    return new NextResponse(buffer, {
+    if (!data.audioContent) {
+      throw new Error("No audio content received");
+    }
+
+    const audioBuffer = Buffer.from(data.audioContent, "base64");
+
+    return new NextResponse(audioBuffer, {
       headers: {
-        'Content-Type': 'audio/mpeg',
-        'Content-Length': buffer.length.toString(),
+        "Content-Type": "audio/mpeg",
+        "Content-Length": audioBuffer.length.toString(),
       },
     });
 
-  } catch (error: any) {
-    console.error('TTS Error:', error);
+  } catch (error) {
+    console.error("TTS Error:", error);
     return NextResponse.json(
-      { error: 'Failed to generate audio' },
+      { error: "Failed to generate audio" },
       { status: 500 }
     );
   }
