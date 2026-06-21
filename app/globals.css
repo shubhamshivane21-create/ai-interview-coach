@@ -1,26 +1,201 @@
 @import "tailwindcss";
 
+/* ============================================================
+   CANDOR — Design Tokens
+   Palette: "interview room at dusk" — warm, editorial, serious.
+   Deliberately NOT the dark+neon-green AI-SaaS default.
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces */
+  --ink: #15151a;          /* primary background — near-black, warm undertone */
+  --ink-raised: #1c1c22;   /* elevated panels on dark */
+  --paper: #faf7f0;        /* light "transcript page" panels */
+  --paper-dim: #f0ebe0;
+
+  /* Accents */
+  --rust: #c9603c;         /* primary accent — confident, warm */
+  --rust-bright: #e07750;
+  --sage: #7a8b7f;         /* secondary accent — technical/calm */
+  --amber: #e8b563;        /* tertiary accent — confidence/highlight */
+  --graphite: #3a3a42;     /* borders, muted text on dark */
+
+  /* Text */
+  --text-primary: #f3f0e8;
+  --text-muted: #9a9aa3;
+  --text-on-paper: #1f1f24;
+
+  /* Semantic */
+  --success: #7a8b7f;
+  --warning: #e8b563;
+  --danger: #c9603c;
+
+  --background: var(--ink);
+  --foreground: var(--text-primary);
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
 }
 
 @theme inline {
+  --color-ink: var(--ink);
+  --color-ink-raised: var(--ink-raised);
+  --color-paper: var(--paper);
+  --color-paper-dim: var(--paper-dim);
+  --color-rust: var(--rust);
+  --color-rust-bright: var(--rust-bright);
+  --color-sage: var(--sage);
+  --color-amber: var(--amber);
+  --color-graphite: var(--graphite);
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+  --color-text-on-paper: var(--text-on-paper);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--rust);
+  color: var(--paper);
+}
+
+/* Visible keyboard focus everywhere — accessibility floor */
+:focus-visible {
+  outline: 2px solid var(--rust-bright);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Subtle film-grain-like texture instead of a neon grid */
+.grain-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+  background-image: radial-gradient(circle at 1px 1px, rgba(250, 247, 240, 0.035) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+.serif {
+  font-family: var(--font-display), serif;
+}
+
+.mono {
+  font-family: var(--font-mono), monospace;
+  font-feature-settings: "tnum";
+}
+
+/* ============================================================
+   Motion — used deliberately, respects reduced-motion
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes type-caret {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.caret {
+  display: inline-block;
+  width: 2px;
+  margin-left: 2px;
+  background: var(--rust);
+  animation: type-caret 0.9s step-end infinite;
+}
+
+@keyframes score-fill {
+  from { width: 0%; }
+}
+
+.animate-score-fill {
+  animation: score-fill 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.pulse-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+@keyframes rise-stagger {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stagger-item {
+  animation: rise-stagger 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Card lift on hover — used sparingly, only on truly interactive cards */
+.lift-on-hover {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.lift-on-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.4);
+}
+
+/* Scrollbar — quiet, matches ink theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--ink);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--graphite);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--rust);
 }
