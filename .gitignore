@@ -1,4 +1,3 @@
-@"
 node_modules/
 .next/
 stitch ai/
@@ -6,4 +5,3 @@ ngrok.exe
 .env.local
 .env
 *.log
-"@ | Out-File -FilePath .gitignore -Encoding utf8
