@@ -1,91 +1,189 @@
-# PrepMind AI — AI Interview Coach
+# 🧠 PrepMind AI — AI Interview Coach
 
-> 🚀 **Live Demo:** [https://ai-interview-coach-red.vercel.app](https://ai-interview-coach-red.vercel.app)
+> An AI-powered interview preparation platform built with Next.js 16, Gemini 2.5 Flash, MongoDB, and NextAuth.
 
-An AI-powered interview preparation platform that analyzes a candidate's resume, generates personalized interview questions, evaluates spoken or typed answers, and tracks progress over time through a session dashboard.
+![PrepMind AI](https://img.shields.io/badge/PrepMind-AI%20Interview%20Coach-emerald?style=for-the-badge)
+![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?style=for-the-badge&logo=next.js)
+![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-blue?style=for-the-badge&logo=google)
+![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?style=for-the-badge&logo=mongodb)
+![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=for-the-badge&logo=vercel)
 
-## Features
+---
 
-- **Resume parsing** — upload a PDF resume; Google Gemini extracts skills, projects, experience, and education directly from the file.
-- **Personalized question generation** — interview questions are generated based on the candidate's actual background rather than a generic question bank.
-- **Voice-to-text answers** — candidates can respond by voice (with text input as a fallback), captured via the browser's MediaRecorder API.
-- **AI answer evaluation** — responses are scored and given feedback automatically.
-- **Session dashboard** — a history of past interview sessions and scores, stored per user.
-- **Authentication** — sign-in via Google and GitHub OAuth, handled through NextAuth.
+## 🌐 Live Demo
 
-## Tech Stack
+> **[https://ai-interview-coach-red.vercel.app](https://ai-interview-coach-red.vercel.app)**
 
-- **Framework:** Next.js (App Router), TypeScript
-- **AI:** Google Gemini API (resume parsing, question generation, evaluation)
-- **Database:** MongoDB Atlas
-- **Auth:** NextAuth.js (Google & GitHub providers)
-- **Deployment:** Vercel
+---
 
-## Project Structure
+## 🚀 What It Does
+
+1. **Upload Resume (PDF)** — AI reads your resume and extracts skills, projects, experience
+2. **AI Generates 6 Questions** — Personalized technical, DSA, and behavioral questions based on YOUR resume
+3. **Answer via Voice or Text** — Speak or type your answers using Gemini speech-to-text
+4. **AI Scores Each Answer** — Scored 0-10 on Communication, Technical accuracy, and Confidence
+5. **7-Day Study Plan** — AI identifies weak areas and builds a personalized day-by-day study plan
+6. **Session History** — All interviews saved with a Claude-style sidebar showing past sessions
+7. **Google & GitHub Sign-in** — Secure authentication via NextAuth.js
+
+---
+
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Next.js 16.2.9 (Turbopack), TypeScript, Tailwind CSS |
+| AI/LLM | Google Gemini 2.5 Flash (via raw fetch) |
+| Speech-to-Text | Gemini Audio API |
+| Database | MongoDB Atlas (via Mongoose) |
+| Auth | NextAuth.js (Google + GitHub OAuth) |
+| Hosting | Vercel |
+
+---
+
+## 👥 Team Division
+
+| Member | Role | Branch |
+|--------|------|--------|
+| Member 1 | Frontend + Resume Upload | `feature/frontend` |
+| Member 2 | Backend Agents + API Routes | `feature/agents` |
+| Member 3 | Voice Pipeline + Database + GitHub | `feature/voice-db` |
+
+---
+
+## 📁 Project Structure
 
 ```
-app/
-  api/            # API routes (auth, resume, interview, evaluate, sessions, learning, stt, tts)
-  upload/         # Resume upload page
-  interview/      # Interview flow page
-  results/        # Results page
-  sign-in/        # Sign-in page
-  dashboard/      # Session history dashboard
-agents/           # AI agent logic (resume parsing, interview, evaluation, learning)
-lib/              # Shared utilities (Gemini client, MongoDB connection)
-models/           # MongoDB schema definitions (e.g. Session)
-components/       # Shared React components
+ai-interview-coach/
+├── app/
+│   ├── page.tsx                  ← Landing page with auth
+│   ├── upload/page.tsx           ← Resume upload page
+│   ├── interview/page.tsx        ← Interview session page
+│   ├── results/page.tsx          ← Scores + study plan
+│   ├── dashboard/page.tsx        ← History sidebar
+│   ├── sign-in/page.tsx          ← Google + GitHub sign in
+│   └── api/
+│       ├── resume/route.ts       ← Parse PDF resume
+│       ├── interview/route.ts    ← Generate questions
+│       ├── evaluate/route.ts     ← Score answers
+│       ├── learning/route.ts     ← Generate study plan
+│       ├── stt/route.ts          ← Speech to text
+│       ├── tts/route.ts          ← Text to speech
+│       ├── sessions/route.ts     ← Session history
+│       └── auth/[...nextauth]/   ← NextAuth config
+├── agents/
+│   ├── resumeAgent.ts            ← PDF parsing via Gemini
+│   ├── interviewAgent.ts         ← Question generation
+│   ├── evaluationAgent.ts        ← Answer scoring
+│   └── learningAgent.ts          ← Study plan generation
+├── lib/
+│   └── mongodb.ts                ← MongoDB connection
+├── models/
+│   └── Session.ts                ← MongoDB session schema
+└── .env.local                    ← API keys (never commit!)
 ```
 
-## Getting Started
+---
 
-Clone the repository and install dependencies:
+## ⚙️ Setup & Installation
 
+### 1. Clone the repo
 ```bash
 git clone https://github.com/shubhamshivane21-create/ai-interview-coach.git
 cd ai-interview-coach
+```
+
+### 2. Install dependencies
+```bash
 npm install
 ```
 
-Create a `.env.local` file in the project root with the following variables (ask a team member for actual values — never commit this file):
-
-```
-GEMINI_API_KEY=
-MONGODB_URI=
+### 3. Create `.env.local`
+```env
+GEMINI_API_KEY=your_gemini_api_key
+MONGODB_URI=your_mongodb_connection_string
 NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
+NEXTAUTH_SECRET=your_secret_key
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
 ```
 
-Run the development server:
-
+### 4. Run development server
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000)
 
-## Deployment
+---
 
-This project is deployed on [Vercel](https://vercel.com) at [https://ai-interview-coach-red.vercel.app](https://ai-interview-coach-red.vercel.app).
+## 🔑 Environment Variables
 
-On deploy, make sure to:
-- Set all environment variables listed above in the Vercel project settings.
-- Update `NEXTAUTH_URL` to the production domain after the first deploy.
-- Add the production callback URLs to both the Google Cloud OAuth client and the GitHub OAuth App.
-- Allow access from anywhere (`0.0.0.0/0`) in MongoDB Atlas Network Access.
+| Variable | Description |
+|----------|-------------|
+| `GEMINI_API_KEY` | Google AI Studio API key |
+| `MONGODB_URI` | MongoDB Atlas connection string |
+| `NEXTAUTH_URL` | App URL (http://localhost:3000 for dev) |
+| `NEXTAUTH_SECRET` | Random secret string for NextAuth |
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret |
+| `GITHUB_CLIENT_ID` | GitHub OAuth App Client ID |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth App Client Secret |
 
-## Team
+---
 
-| Member | Area |
-|---|---|
-| Member 1 | Frontend (pages, UI, auth flow) |
-| Member 2 | Backend (AI agents, API routes) |
-| Member 3 | Database, sessions, dashboard integration |
+## 🎯 Features
 
-## License
+- ✅ Resume PDF upload with AI parsing (Gemini reads PDF natively)
+- ✅ 6 personalized questions (DSA + Technical + Behavioral)
+- ✅ Voice answers via microphone (Gemini STT)
+- ✅ Real-time scoring on 3 metrics (0-10 each)
+- ✅ 7-day personalized study plan
+- ✅ Session history with dashboard sidebar
+- ✅ Google & GitHub OAuth sign-in
+- ✅ MongoDB session storage
+- ✅ Auto-fallback: gemini-2.5-flash → gemini-2.5-flash-lite on quota limit
+- ✅ Deployed on Vercel at [ai-interview-coach-red.vercel.app](https://ai-interview-coach-red.vercel.app)
 
-This project is for educational/portfolio purposes.
+---
+
+## 📊 Agent Architecture
+
+```
+User (Resume PDF + Voice/Text)
+        │
+        ▼
+  Resume Agent      ← Sends PDF to Gemini, extracts skills/projects
+        │
+        ▼
+  Interview Agent   ← Generates 6 personalized questions
+        │
+        ▼
+  Evaluation Agent  ← Scores each answer (0-10) on 3 metrics
+        │
+        ▼
+  Learning Agent    ← Creates 7-day study plan from weak areas
+        │
+        ▼
+    MongoDB         ← Stores sessions, scores, study plans
+```
+
+---
+
+## 🚀 Deployment
+
+Live at: **[https://ai-interview-coach-red.vercel.app](https://ai-interview-coach-red.vercel.app)**
+
+To deploy your own:
+1. Push to GitHub
+2. Connect repo to [vercel.com](https://vercel.com)
+3. Add all environment variables in Vercel dashboard
+4. Update `NEXTAUTH_URL` to your Vercel domain
+5. Add production callback URLs to Google & GitHub OAuth apps
+6. Deploy!
+
+---
+
+*Built by a team of 3 students — Week 2 College Project 2026*
