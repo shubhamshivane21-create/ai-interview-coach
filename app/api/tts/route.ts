@@ -72,8 +72,7 @@ export async function POST(req: NextRequest) {
     const pcmBuffer = Buffer.from(inline.data, "base64");
     const wavBuffer = pcmToWav(pcmBuffer, SAMPLE_RATE);
 
-    return new NextResponse(wavBuffer, {
-      headers: {
+return new NextResponse(new Uint8Array(wavBuffer), {      headers: {
         "Content-Type": "audio/wav",
         "Content-Length": wavBuffer.length.toString(),
       },
