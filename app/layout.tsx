@@ -1,31 +1,31 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
-import { Providers } from "./providers";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import Providers from "./providers";
 
 export const metadata: Metadata = {
   title: "PrepMind AI — AI Interview Coach",
-  description: "Upload your resume, get AI-generated interview questions, answer via voice or text, and receive a personalized study plan.",
+  description: "AI-powered mock interviews, resume analysis and personalised feedback. Powered by Gemini.",
+  keywords: ["interview coach", "AI interview", "mock interview", "resume analysis"],
+  authors: [{ name: "PrepMind AI" }],
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="en" data-theme="dark" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body>
+        {/* Anti-flash: apply saved theme before first paint */}
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`(function(){try{var t=localStorage.getItem('pm-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`}
+        </Script>
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -1,262 +1,501 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useState, useEffect, useRef } from "react";
+import { signIn, useSession } from "next-auth/react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
-export default function Home() {
-  const [mounted, setMounted] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+/* ─── Data ─────────────────────────────────────────────────────────────── */
+const AGENTS = [
+  { id:"01", icon:"📄", name:"Resume Agent",     desc:"Parses your PDF, extracts skills, projects & experience in real time" },
+  { id:"02", icon:"🎯", name:"ATS Agent",         desc:"Scores your resume against ATS systems & detects keyword gaps" },
+  { id:"03", icon:"❓", name:"Question Agent",    desc:"Generates 6 personalised interview questions from your background" },
+  { id:"04", icon:"🎙️", name:"Interview Agent",   desc:"Manages the live session with dynamic follow-up questions" },
+  { id:"05", icon:"📊", name:"Evaluation Agent",  desc:"Scores answers on technical depth, communication & confidence" },
+  { id:"06", icon:"🗓️", name:"Study Plan Agent",  desc:"Builds your 7-day roadmap from weak areas with specific resources" },
+];
+
+const COMPANIES = [
+  { name:"Google",    c:"#4285F4" }, { name:"Amazon",    c:"#FF9900" },
+  { name:"Microsoft", c:"#00A4EF" }, { name:"Apple",     c:"#A0A0A0" },
+  { name:"Meta",      c:"#0082FB" }, { name:"Netflix",   c:"#E50914" },
+  { name:"TCS",       c:"#E84040" }, { name:"Infosys",   c:"#007CC3" },
+  { name:"Accenture", c:"#A100FF" }, { name:"Startup",   c:"#10b981" },
+];
+
+const FEATURES = [
+  { icon:"📄", title:"AI Resume Analysis",    desc:"ATS score, skill gaps, keyword analysis and improvement suggestions in seconds." },
+  { icon:"🎯", title:"Company-Specific Prep", desc:"Questions tailored for Google, Amazon, Meta, TCS and 6 more companies." },
+  { icon:"📊", title:"3-Axis Scoring",        desc:"Technical depth, communication clarity, and confidence rated independently." },
+  { icon:"🎙️", title:"Voice Interview",       desc:"Speak your answers. AI transcribes, scores speaking pace and filler words." },
+  { icon:"⚡", title:"Follow-up Questions",   desc:"AI dynamically generates follow-ups based on your previous answer." },
+  { icon:"🗓️", title:"7-Day Study Plan",      desc:"Structured daily tasks with specific free resources built from your weak areas." },
+];
+
+const OUTPUTS = [
+  "ATS Score", "Resume Analysis", "6 AI Questions",
+  "3-Axis Scoring", "7-Day Study Plan", "Voice Mode", "Session History",
+];
+
+/* ─── Google icon ────────────────────────────────────────────────────────── */
+function GoogleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    </svg>
+  );
+}
+
+/* ─── GitHub icon ────────────────────────────────────────────────────────── */
+function GitHubIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
+    </svg>
+  );
+}
+
+/* ─── Floating particle ─────────────────────────────────────────────────── */
+function Particle({ x, y, size, delay, dur }: { x:number; y:number; size:number; delay:number; dur:number }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: `${x}%`,
+        top: `${y}%`,
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: size > 3
+          ? "rgba(16,185,129,0.5)"
+          : "rgba(6,182,212,0.4)",
+        boxShadow: `0 0 ${size * 2}px ${size > 3 ? "rgba(16,185,129,0.4)" : "rgba(6,182,212,0.35)"}`,
+        animation: `float ${dur}s ease-in-out ${delay}s infinite`,
+        pointerEvents: "none",
+      }}
+    />
+  );
+}
+
+const PARTICLES = [
+  { x:6,  y:18, size:4, delay:0,   dur:5 },
+  { x:14, y:62, size:2, delay:1,   dur:4 },
+  { x:22, y:38, size:3, delay:0.5, dur:6 },
+  { x:78, y:14, size:2, delay:2,   dur:5 },
+  { x:88, y:52, size:4, delay:0.3, dur:4 },
+  { x:92, y:78, size:2, delay:1.5, dur:6 },
+  { x:62, y:72, size:3, delay:0.8, dur:5 },
+  { x:44, y:8,  size:2, delay:2.5, dur:4 },
+  { x:33, y:88, size:3, delay:1.2, dur:6 },
+  { x:72, y:44, size:2, delay:0.7, dur:5 },
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LANDING PAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
+export default function LandingPage() {
   const { data: session } = useSession();
+  const [activeAgent, setActiveAgent] = useState(0);
+  const [mounted, setMounted]         = useState(false);
+  const [mouseGlow, setMouseGlow]     = useState({ x: -999, y: -999 });
+  const heroRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+    const id = setInterval(() => setActiveAgent(a => (a + 1) % AGENTS.length), 2400);
+    return () => clearInterval(id);
+  }, []);
+
+  function handleMouseMove(e: React.MouseEvent) {
+    if (!heroRef.current) return;
+    const r = heroRef.current.getBoundingClientRect();
+    setMouseGlow({ x: e.clientX - r.left, y: e.clientY - r.top });
+  }
+
+  if (!mounted) return null;
 
   return (
-    <main className="min-h-screen bg-[#060809] text-white overflow-x-hidden">
-      {/* Background */}
-      <div className="fixed inset-0 bg-[linear-gradient(rgba(0,255,150,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,150,0.03)_1px,transparent_1px)] bg-[size:80px_80px]" />
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-emerald-500/6 rounded-full blur-[150px] pointer-events-none" />
+    <div style={{ minHeight:"100vh", background:"var(--bg)", color:"var(--text)" }}>
 
-      {/* NAVBAR */}
-      <nav className="relative z-20 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
-            <span className="text-black font-black text-base">P</span>
-          </div>
-          <span className="font-black text-xl tracking-tight">PrepMind <span className="text-emerald-400">AI</span></span>
+      {/* Aurora + grid */}
+      <div className="aurora-bg"><div className="aurora-orb" /></div>
+      <div className="grid-overlay" />
+
+      {/* Mouse glow */}
+      <div
+        style={{
+          position:"fixed", pointerEvents:"none", zIndex:1,
+          width:500, height:500, borderRadius:"50%",
+          background:"radial-gradient(circle, rgba(16,185,129,0.07) 0%, transparent 70%)",
+          transform:`translate(${mouseGlow.x - 250}px, ${mouseGlow.y - 250}px)`,
+          transition:"transform 0.1s ease",
+          top:0, left:0,
+        }}
+      />
+
+      {/* ── NAV ──────────────────────────────────────────────────────────── */}
+      <nav className="site-nav">
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div className="logo-mark">P</div>
+          <span style={{ fontWeight:800, fontSize:18, letterSpacing:"-0.025em" }}>
+            PrepMind<span style={{ color:"var(--green)" }}> AI</span>
+          </span>
         </div>
 
-        {/* Nav links */}
-        <div className="hidden md:flex items-center gap-8">
-          {["Features", "How it works", "Companies"].map(l => (
-            <span key={l} onClick={() => document.getElementById(l.toLowerCase().replace(/ /g,"-"))?.scrollIntoView({behavior:"smooth"})}
-              className="text-sm text-zinc-500 hover:text-white cursor-pointer transition-colors font-medium">{l}</span>
+        <div style={{ display:"flex", alignItems:"center", gap:28 }}>
+          {["Features","How it works","Companies"].map(l => (
+            <button
+              key={l}
+              onClick={() => document.getElementById(l.toLowerCase().replace(/ /g,"-"))?.scrollIntoView({ behavior:"smooth" })}
+              style={{ background:"none", border:"none", cursor:"pointer", color:"var(--text-2)", fontSize:13, fontWeight:500, transition:"color 0.15s" }}
+              onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "var(--text-2)")}
+            >{l}</button>
           ))}
         </div>
 
-        {/* Auth area */}
-        <div className="flex items-center gap-3">
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <ThemeToggle />
           {session ? (
-            <div className="flex items-center gap-3">
-              <img src={session.user?.image || ""} alt="" className="w-8 h-8 rounded-full border border-white/10" />
-              <span className="text-sm text-zinc-400 hidden md:block">{session.user?.name?.split(" ")[0]}</span>
-              <button onClick={() => { window.location.href = "/upload"; }}
-                className="px-4 py-2 bg-emerald-500 text-black text-sm font-bold rounded-xl hover:bg-emerald-400 transition-all">
-                Dashboard →
-              </button>
-              <button onClick={() => signOut()} className="text-xs text-zinc-700 hover:text-zinc-400 transition-colors hidden md:block">Sign out</button>
-            </div>
+            <button className="btn-primary" style={{ padding:"9px 20px", fontSize:13 }}
+              onClick={() => { window.location.href="/dashboard"; }}>
+              Dashboard →
+            </button>
           ) : (
-            <div className="flex items-center gap-2">
-              <button onClick={() => signIn("google", { callbackUrl: "/" })}
-                className="hidden md:flex items-center gap-2 px-4 py-2 border border-white/8 rounded-xl text-sm text-zinc-400 hover:text-white hover:border-white/15 transition-all">
-                <svg width="14" height="14" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Google
+            <>
+              <button className="btn-ghost" style={{ padding:"9px 18px", fontSize:13 }}
+                onClick={() => signIn("google")}>
+                Sign In
               </button>
-              <button onClick={() => signIn("github", { callbackUrl: "/" })}
-                className="hidden md:flex items-center gap-2 px-4 py-2 border border-white/8 rounded-xl text-sm text-zinc-400 hover:text-white hover:border-white/15 transition-all">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
-                </svg>
-                GitHub
+              <button className="btn-primary" style={{ padding:"9px 20px", fontSize:13 }}
+                onClick={() => { window.location.href="/upload"; }}>
+                Try Free →
               </button>
-              <button onClick={() => { window.location.href = "/sign-in"; }}
-                className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-black text-sm font-bold rounded-xl hover:from-emerald-400 hover:to-teal-400 transition-all shadow-lg shadow-emerald-500/20 hover:scale-105">
-                Get Started →
-              </button>
-            </div>
+            </>
           )}
         </div>
       </nav>
 
-      {/* HERO */}
-      <section className="relative z-10 flex flex-col items-center text-center px-6 pt-24 pb-20">
-        <div className={`transition-all duration-1000 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-500/25 bg-emerald-500/8 text-emerald-400 text-xs font-bold mb-10 tracking-wide uppercase">
-            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-            Powered by Gemini 2.5 Flash AI
+      {/* ── HERO + AGENT PIPELINE ─────────────────────────────────────────── */}
+      <div
+        ref={heroRef}
+        onMouseMove={handleMouseMove}
+        style={{
+          position:"relative", zIndex:1,
+          display:"grid",
+          gridTemplateColumns:"1fr 400px",
+          minHeight:"calc(100vh - 62px)",
+          borderBottom:"1px solid var(--border)",
+        }}
+      >
+        {/* Left: hero copy */}
+        <div
+          style={{
+            display:"flex", flexDirection:"column", justifyContent:"center",
+            padding:"72px 56px",
+            borderRight:"1px solid var(--border)",
+            position:"relative", overflow:"hidden",
+          }}
+        >
+          {/* Particles */}
+          {PARTICLES.map((p,i) => <Particle key={i} {...p} />)}
+
+          {/* Badge */}
+          <div
+            className="badge badge-green anim-fade-up"
+            style={{ alignSelf:"flex-start", marginBottom:24 }}
+          >
+            <span className="live-dot" />
+            <span className="label-accent">Powered by Gemini 2.0 Flash</span>
+          </div>
+
+          {/* Headline */}
+          <h1
+            className="anim-fade-up d1"
+            style={{
+              fontWeight:900,
+              fontSize:"clamp(40px, 5.5vw, 68px)",
+              lineHeight:1.05,
+              letterSpacing:"-0.04em",
+              marginBottom:22,
+            }}
+          >
+            Land your dream<br />
+            <span className="gradient-text text-glow">tech interview.</span>
+          </h1>
+
+          {/* Sub */}
+          <p
+            className="anim-fade-up d2"
+            style={{ color:"var(--text-2)", fontSize:17, lineHeight:1.75, maxWidth:500, marginBottom:40 }}
+          >
+            Upload your resume. Our 6-agent AI system generates personalised
+            questions, evaluates every answer, and delivers a complete study
+            roadmap — all in under 2 minutes.
+          </p>
+
+          {/* CTA buttons */}
+          <div className="anim-fade-up d3" style={{ display:"flex", gap:12, flexWrap:"wrap", marginBottom:44 }}>
+            <button
+              className="btn-primary"
+              style={{ padding:"15px 32px", fontSize:15 }}
+              onClick={() => { window.location.href="/upload"; }}
+            >
+              Start Interview Free →
+            </button>
+            <button
+              className="btn-ghost"
+              style={{ padding:"15px 22px", fontSize:14 }}
+              onClick={() => signIn("google")}
+            >
+              <GoogleIcon /> Sign in with Google
+            </button>
+            <button
+              className="btn-ghost"
+              style={{ padding:"15px 22px", fontSize:14 }}
+              onClick={() => signIn("github")}
+            >
+              <GitHubIcon /> GitHub
+            </button>
+          </div>
+
+          {/* Output tags */}
+          <div className="anim-fade-up d4">
+            <p className="label-mono" style={{ marginBottom:12 }}>What you receive</p>
+            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+              {OUTPUTS.map(o => (
+                <span key={o} className="badge badge-green" style={{ fontSize:11 }}>
+                  · {o}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
-        <h1 className={`font-black tracking-tight mb-8 transition-all duration-1000 delay-100 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-          style={{ fontSize: "clamp(3rem, 8vw, 7rem)", lineHeight: 1.05, fontFamily: "'Geist', system-ui, sans-serif" }}>
-          Your AI Interview
-          <br />
-          <span style={{
-            background: "linear-gradient(135deg, #34d399, #06b6d4, #34d399)",
-            backgroundSize: "200% 200%",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-            animation: "shimmer 4s ease-in-out infinite"
-          }}>
-            Coach is Here.
-          </span>
-        </h1>
+        {/* Right: agent pipeline */}
+        <div
+          style={{
+            display:"flex", flexDirection:"column", justifyContent:"center",
+            padding:"40px 28px",
+            background:"var(--glass-inner)",
+            borderLeft:"1px solid var(--border)",
+          }}
+        >
+          <p className="label-mono" style={{ marginBottom:6 }}>AI Agent Pipeline</p>
+          <p style={{ color:"var(--text-3)", fontSize:11, marginBottom:20, fontFamily:"'JetBrains Mono',monospace" }}>
+            Sequential execution · Real-time streaming
+          </p>
 
-        <p className={`text-zinc-400 max-w-xl mb-12 transition-all duration-1000 delay-200 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-          style={{ fontSize: "clamp(1rem, 2vw, 1.25rem)", lineHeight: 1.7 }}>
-          Upload your resume. Get 6 smart questions tailored to your skills. Answer by voice or text. Get scored and receive a personalized study plan — all in minutes.
+          <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+            {AGENTS.map((a, i) => (
+              <div
+                key={a.id}
+                style={{
+                  padding:"14px 16px",
+                  borderRadius:14,
+                  background: activeAgent===i ? "var(--green-dim)" : "transparent",
+                  border:`1px solid ${activeAgent===i ? "var(--green-border)" : "var(--border)"}`,
+                  transition:"all 0.35s cubic-bezier(0.16,1,0.3,1)",
+                  cursor:"default",
+                }}
+              >
+                <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                  <span
+                    className="label-mono"
+                    style={{ color: activeAgent===i ? "var(--green)" : "var(--text-3)", minWidth:22, transition:"color 0.35s" }}
+                  >{a.id}</span>
+                  <span style={{ fontSize:16, flexShrink:0 }}>{a.icon}</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div
+                      style={{
+                        fontSize:13, fontWeight:700,
+                        color: activeAgent===i ? "var(--text)" : "var(--text-2)",
+                        marginBottom:2, transition:"color 0.35s",
+                      }}
+                    >{a.name}</div>
+                    <div
+                      style={{
+                        fontSize:11, color:"var(--text-3)", lineHeight:1.5,
+                        maxHeight: activeAgent===i ? 40 : 0,
+                        overflow:"hidden",
+                        transition:"max-height 0.4s ease",
+                      }}
+                    >{a.desc}</div>
+                  </div>
+                  {activeAgent===i && <span className="live-dot" style={{ flexShrink:0 }} />}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── FEATURES ─────────────────────────────────────────────────────── */}
+      <section
+        id="features"
+        style={{ position:"relative", zIndex:1, padding:"96px 56px", maxWidth:1200, margin:"0 auto" }}
+      >
+        <div style={{ textAlign:"center", marginBottom:56 }}>
+          <p className="label-accent" style={{ marginBottom:12 }}>Features</p>
+          <h2
+            style={{
+              fontWeight:900,
+              fontSize:"clamp(28px,4vw,46px)",
+              letterSpacing:"-0.035em",
+              marginBottom:16,
+            }}
+          >
+            Everything you need to get{" "}
+            <span className="gradient-text">hired</span>
+          </h2>
+          <p style={{ color:"var(--text-2)", maxWidth:480, margin:"0 auto", fontSize:15, lineHeight:1.75 }}>
+            Built for engineering students targeting top tech companies. Not a generic quiz app.
+          </p>
+        </div>
+
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px,1fr))", gap:20 }}>
+          {FEATURES.map((f,i) => (
+            <div
+              key={f.title}
+              className={`glass-card lift anim-fade-up d${i+1}`}
+              style={{ padding:"24px 22px" }}
+            >
+              <div style={{ fontSize:28, marginBottom:14 }}>{f.icon}</div>
+              <h3 style={{ fontWeight:700, fontSize:15, marginBottom:8 }}>{f.title}</h3>
+              <p style={{ color:"var(--text-2)", fontSize:13, lineHeight:1.7 }}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
+      <section
+        id="how-it-works"
+        style={{
+          position:"relative", zIndex:1,
+          padding:"80px 56px",
+          background:"var(--glass-inner)",
+          borderTop:"1px solid var(--border)",
+          borderBottom:"1px solid var(--border)",
+        }}
+      >
+        <div style={{ maxWidth:900, margin:"0 auto" }}>
+          <div style={{ textAlign:"center", marginBottom:52 }}>
+            <p className="label-accent" style={{ marginBottom:12 }}>How it works</p>
+            <h2
+              style={{ fontWeight:900, fontSize:"clamp(26px,4vw,42px)", letterSpacing:"-0.03em" }}
+            >
+              Resume to results in{" "}
+              <span className="gradient-text">3 steps</span>
+            </h2>
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:32 }}>
+            {[
+              { n:"01", icon:"📄", title:"Upload Resume",      desc:"Drop your PDF. Gemini parses it live — skills, projects and experience extracted in seconds." },
+              { n:"02", icon:"🎙️", title:"Answer 6 Questions", desc:"AI-personalised questions with 2-minute timer per question and voice input supported." },
+              { n:"03", icon:"📊", title:"Get Your Results",   desc:"Scores, AI feedback, STAR analysis, 7-day study plan and session history saved to your account." },
+            ].map((s,i) => (
+              <div
+                key={s.n}
+                className={`anim-fade-up d${i+1}`}
+                style={{ textAlign:"center", padding:"28px 16px" }}
+              >
+                <div
+                  style={{
+                    width:56, height:56, borderRadius:18, margin:"0 auto 18px",
+                    background:"var(--green-dim)",
+                    border:"1px solid var(--green-border)",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    fontSize:24,
+                  }}
+                >{s.icon}</div>
+                <div className="label-accent" style={{ marginBottom:8 }}>Step {s.n}</div>
+                <h3 style={{ fontWeight:700, fontSize:16, marginBottom:10 }}>{s.title}</h3>
+                <p style={{ color:"var(--text-2)", fontSize:13, lineHeight:1.75 }}>{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── COMPANIES ────────────────────────────────────────────────────── */}
+      <section
+        id="companies"
+        style={{ position:"relative", zIndex:1, padding:"72px 56px", maxWidth:1000, margin:"0 auto", textAlign:"center" }}
+      >
+        <p className="label-mono" style={{ marginBottom:20 }}>Practice for these companies</p>
+        <div style={{ display:"flex", gap:10, flexWrap:"wrap", justifyContent:"center" }}>
+          {COMPANIES.map(c => (
+            <span
+              key={c.name}
+              className="badge"
+              style={{
+                background:`${c.c}12`,
+                border:`1px solid ${c.c}28`,
+                color:c.c,
+                padding:"8px 18px",
+                fontSize:13,
+                fontWeight:700,
+              }}
+            >
+              {c.name}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      {/* ── CTA ──────────────────────────────────────────────────────────── */}
+      <section
+        style={{
+          position:"relative", zIndex:1,
+          padding:"80px 40px",
+          textAlign:"center",
+          borderTop:"1px solid var(--border)",
+          background:"var(--glass-inner)",
+        }}
+      >
+        <h2
+          style={{ fontWeight:900, fontSize:"clamp(26px,4vw,46px)", letterSpacing:"-0.03em", marginBottom:18 }}
+        >
+          Ready to <span className="gradient-text">ace your interview?</span>
+        </h2>
+        <p style={{ color:"var(--text-2)", fontSize:15, marginBottom:36 }}>
+          No sign-up required. Upload your resume and start practising in 30 seconds.
         </p>
-
-        <div className={`flex flex-col sm:flex-row gap-4 mb-20 transition-all duration-1000 delay-300 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-          <button onClick={() => { window.location.href = session ? "/upload" : "/sign-in"; }}
-            className="px-10 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-black font-black rounded-2xl hover:from-emerald-400 hover:to-teal-400 transition-all shadow-2xl shadow-emerald-500/30 hover:scale-105 hover:shadow-emerald-500/50"
-            style={{ fontSize: "1.1rem" }}>
-            {session ? "Start Your Interview →" : "Try Free — No Login Needed →"}
-          </button>
-          {!session && (
-            <button onClick={() => { window.location.href = "/sign-in"; }}
-              className="px-10 py-4 border border-white/8 text-zinc-300 font-semibold rounded-2xl hover:border-white/20 hover:bg-white/3 transition-all"
-              style={{ fontSize: "1.1rem" }}>
-              Sign In
-            </button>
-          )}
-        </div>
-
-        {/* Stats row */}
-        <div className={`flex flex-wrap justify-center gap-10 transition-all duration-1000 delay-500 ${mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-          {[
-            { value: "6", label: "Smart Questions" },
-            { value: "3", label: "Score Metrics" },
-            { value: "7-Day", label: "Study Plan" },
-            { value: "100%", label: "Resume-Based" },
-          ].map(s => (
-            <div key={s.label} className="text-center">
-              <div className="font-black text-3xl" style={{ background: "linear-gradient(135deg, #34d399, #06b6d4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>{s.value}</div>
-              <div className="text-zinc-600 text-xs mt-1 font-medium tracking-wide">{s.label}</div>
-            </div>
-          ))}
-        </div>
+        <button
+          className="btn-primary"
+          style={{ padding:"16px 44px", fontSize:16 }}
+          onClick={() => { window.location.href="/upload"; }}
+        >
+          Start Free Interview →
+        </button>
       </section>
 
-      {/* SIGN IN PANEL (only if not logged in) */}
-      {!session && (
-        <section className="relative z-10 px-6 pb-20">
-          <div className="max-w-sm mx-auto p-8 rounded-3xl border border-white/6 bg-white/2 backdrop-blur-sm">
-            <h2 className="text-xl font-black text-center mb-2">Sign in to save progress</h2>
-            <p className="text-zinc-600 text-xs text-center mb-6">Your sessions, scores and study plans are saved to your account</p>
-            <button onClick={() => signIn("google", { callbackUrl: "/" })}
-              className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl border border-white/8 bg-white/3 hover:bg-white/6 transition-all mb-3 text-sm font-semibold text-white">
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              Continue with Google
-            </button>
-            <button onClick={() => signIn("github", { callbackUrl: "/" })}
-              className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl border border-white/8 bg-white/3 hover:bg-white/6 transition-all mb-4 text-sm font-semibold text-white">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-                <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
-              </svg>
-              Continue with GitHub
-            </button>
-            <button onClick={() => { window.location.href = "/upload"; }}
-              className="w-full py-3 text-zinc-600 text-xs hover:text-zinc-400 transition-colors">
-              Skip — Continue as Guest
-            </button>
-          </div>
-        </section>
-      )}
-
-      {/* FEATURES */}
-      <section id="features" className="relative z-10 px-6 pb-24">
-        <div className="text-center mb-16">
-          <p className="text-emerald-400 text-xs font-bold uppercase tracking-widest mb-4">Why PrepMind AI</p>
-          <h2 className="font-black" style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)" }}>
-            Everything you need to
-            <br /><span style={{ background: "linear-gradient(135deg, #34d399, #06b6d4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>crack any interview</span>
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
-          {[
-            { icon: "📄", title: "Resume-Based Questions", desc: "AI reads your actual resume and asks questions specific to YOUR skills, projects and experience — not generic ones.", badge: "Smart" },
-            { icon: "💻", title: "DSA + Coding Questions", desc: "Get real DSA questions relevant to your tech stack. Arrays, trees, graphs — tailored to your level.", badge: "New" },
-            { icon: "🎤", title: "Voice Answers", desc: "Speak your answers naturally. Gemini AI transcribes and evaluates your communication in real time.", badge: null },
-            { icon: "📊", title: "3-Metric Scoring", desc: "Scored on Communication clarity, Technical accuracy, and Confidence — just like a real interviewer.", badge: null },
-            { icon: "📚", title: "7-Day Study Plan", desc: "AI pinpoints your exact weak areas and builds a day-by-day study roadmap with free resources.", badge: "Personalized" },
-            { icon: "🔐", title: "Saved Sessions", desc: "Sign in with Google or GitHub and all your interview sessions, scores and plans are saved forever.", badge: null },
-          ].map(f => (
-            <div key={f.title} className="p-6 rounded-2xl border border-white/5 bg-white/1 hover:border-emerald-500/20 hover:bg-emerald-500/3 transition-all duration-300 group hover:-translate-y-1">
-              {f.badge && <span className="inline-block mb-3 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/15 tracking-wide">{f.badge}</span>}
-              <div className="text-3xl mb-3 group-hover:scale-110 transition-transform duration-200">{f.icon}</div>
-              <h3 className="font-bold text-white mb-2">{f.title}</h3>
-              <p className="text-zinc-600 text-sm leading-relaxed">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* HOW IT WORKS */}
-      <section id="how-it-works" className="relative z-10 px-6 pb-24">
-        <div className="text-center mb-16">
-          <p className="text-emerald-400 text-xs font-bold uppercase tracking-widest mb-4">Process</p>
-          <h2 className="font-black" style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)" }}>
-            From resume to offer
-            <br /><span style={{ background: "linear-gradient(135deg, #34d399, #06b6d4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>in 4 simple steps</span>
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 max-w-5xl mx-auto">
-          {[
-            { step: "01", title: "Upload Resume", desc: "Drop your PDF. AI extracts your skills, projects and experience in seconds.", icon: "📄" },
-            { step: "02", title: "Get 6 Smart Questions", desc: "Personalized technical, DSA and behavioral questions based on your resume.", icon: "🧠" },
-            { step: "03", title: "Answer by Voice or Text", desc: "Speak or type your answers. The AI listens and understands both.", icon: "🎤" },
-            { step: "04", title: "Scores + Study Plan", desc: "Get detailed scores and a personalized 7-day improvement plan.", icon: "🏆" },
-          ].map((item, idx) => (
-            <div key={item.step} className="relative p-6 rounded-2xl border border-white/5 bg-white/1 hover:border-emerald-500/15 transition-all group hover:-translate-y-1">
-              {idx < 3 && <div className="hidden md:block absolute top-10 right-[-13px] w-6 h-px bg-emerald-500/15 z-10" />}
-              <div className="text-3xl mb-4 group-hover:scale-110 transition-transform">{item.icon}</div>
-              <div className="text-emerald-400 text-xs font-black font-mono mb-2 tracking-widest">{item.step}</div>
-              <h3 className="font-bold text-white mb-2 text-sm">{item.title}</h3>
-              <p className="text-zinc-600 text-xs leading-relaxed">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* COMPANIES */}
-      <section id="companies" className="relative z-10 px-6 pb-24">
-        <p className="text-center text-zinc-700 text-xs uppercase tracking-widest mb-6">Practice for top companies</p>
-        <div className="flex flex-wrap justify-center gap-3 max-w-3xl mx-auto">
-          {["Google", "Amazon", "Microsoft", "TCS", "Infosys", "Wipro", "Meta", "Flipkart", "Accenture", "Cognizant"].map(c => (
-            <span key={c} className="px-4 py-2 rounded-xl border border-white/5 text-zinc-600 text-sm hover:border-emerald-500/20 hover:text-emerald-400 transition-all cursor-default">{c}</span>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="relative z-10 px-6 pb-24">
-        <div className="max-w-2xl mx-auto text-center p-12 rounded-3xl border border-emerald-500/10 bg-gradient-to-br from-emerald-500/4 to-teal-500/4">
-          <h2 className="font-black mb-4" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)" }}>Ready to ace your next interview?</h2>
-          <p className="text-zinc-500 mb-8 text-sm">Free to use. No credit card. Start in 30 seconds.</p>
-          <button onClick={() => { window.location.href = session ? "/upload" : "/sign-in"; }}
-            className="px-10 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-black font-black rounded-2xl hover:from-emerald-400 hover:to-teal-400 transition-all shadow-xl shadow-emerald-500/25 hover:scale-105 text-lg">
-            Start Free →
-          </button>
-        </div>
-      </section>
-
-      <footer className="relative z-10 border-t border-white/4 px-8 py-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-lg flex items-center justify-center">
-            <span className="text-black font-black text-xs">P</span>
-          </div>
-          <span className="text-zinc-600 text-sm font-bold">PrepMind AI</span>
-        </div>
-        <span className="text-zinc-800 text-xs">Built with Next.js + Gemini 2.5 Flash · 2026</span>
+      {/* ── FOOTER ───────────────────────────────────────────────────────── */}
+      <footer
+        style={{
+          position:"relative", zIndex:1,
+          padding:"24px 40px",
+          borderTop:"1px solid var(--border)",
+          display:"flex", justifyContent:"space-between", alignItems:"center",
+          flexWrap:"wrap", gap:12,
+        }}
+      >
+        <span style={{ fontWeight:800, fontSize:15 }}>
+          PrepMind <span style={{ color:"var(--green)" }}>AI</span>
+        </span>
+        <span className="label-mono">
+          Built with Gemini 2.0 Flash · Next.js · MongoDB
+        </span>
       </footer>
 
       <style>{`
-        @keyframes shimmer {
-          0%,100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
+        @media (max-width: 900px) {
+          .hero-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
-    </main>
+    </div>
   );
 }

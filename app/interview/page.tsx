@@ -1,227 +1,496 @@
 "use client";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
+const COMPANY_COLORS: Record<string, string> = {
+  google:"#4285F4", amazon:"#FF9900", microsoft:"#00A4EF",
+  apple:"#A0A0A0", meta:"#0082FB", netflix:"#E50914",
+  tcs:"#E84040", infosys:"#007CC3", accenture:"#A100FF",
+  startup:"#10b981", general:"#64748b",
+};
+const DIFFICULTY_COLORS: Record<string,string> = {
+  easy:"#10b981", medium:"#f59e0b", hard:"#f97316", expert:"#ef4444",
+};
+
+function detectStar(text: string) {
+  const t = text.toLowerCase();
+  return {
+    S: /\b(when|situation|context|background|i was|we were|at my|during|once)\b/.test(t),
+    T: /\b(task|goal|objective|responsible|needed to|had to|my role|challenge)\b/.test(t),
+    A: /\b(i (did|built|created|implemented|decided|used|solved|fixed|led|wrote)|action|approach|step|i then|so i)\b/.test(t),
+    R: /\b(result|outcome|achieved|improved|increased|reduced|saved|delivered|success|finally|as a result)\b/.test(t),
+  };
+}
 
 function InterviewContent() {
   const searchParams = useSearchParams();
-  const sessionId = searchParams.get("sessionId");
-  const [questions, setQuestions] = useState<string[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answer, setAnswer] = useState("");
-  const [scores, setScores] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const sessionId    = searchParams.get("sessionId");
+
+  const [questions, setQuestions]   = useState<string[]>([]);
+  const [company, setCompany]       = useState("general");
+  const [difficulty, setDifficulty] = useState("medium");
+  const [idx, setIdx]               = useState(0);
+  const [answer, setAnswer]         = useState("");
+  const [scores, setScores]         = useState<any[]>([]);
+  const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const [done, setDone] = useState(false);
-  const [sttError, setSttError] = useState("");
+  const [done, setDone]             = useState(false);
+  const [recording, setRecording]   = useState(false);
   const [sttLoading, setSttLoading] = useState(false);
-  const [fadeIn, setFadeIn] = useState(true);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const [sttError, setSttError]     = useState("");
+  const [notes, setNotes]           = useState("");
+  const [lastFeedback, setLastFeedback] = useState("");
+  const [lastScore, setLastScore]   = useState<any>(null);
+  const [timeLeft, setTimeLeft]     = useState(120);
+  const [star, setStar]             = useState({ S:false, T:false, A:false, R:false });
+  const [timerPulse, setTimerPulse] = useState(false);
+
+  const mrRef    = useRef<MediaRecorder | null>(null);
+  const chunks   = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (!sessionId) return;
+    const savedCompany    = localStorage.getItem("pm-company")    || "general";
+    const savedDifficulty = localStorage.getItem("pm-difficulty") || "medium";
+
     fetch("/api/interview", {
-      method: "POST",
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId }),
-    }).then((r) => r.json()).then((d) => { setQuestions(d.questions || []); setLoading(false); });
+      body:    JSON.stringify({
+        sessionId,
+        company:    savedCompany,
+        difficulty: savedDifficulty,
+      }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        setQuestions(d.questions || []);
+        setCompany(d.company    || savedCompany);
+        setDifficulty(d.difficulty || savedDifficulty);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [sessionId]);
 
-  const startRecording = async () => {
-    setSttError(""); setSttLoading(false);
+  useEffect(() => {
+    if (loading) return;
+    setTimeLeft(120);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 30) setTimerPulse(true);
+        else         setTimerPulse(false);
+        return Math.max(0, t - 1);
+      });
+    }, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [idx, loading]);
+
+  useEffect(() => { setStar(detectStar(answer)); }, [answer]);
+
+  async function startRecording() {
+    setSttError("");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
-      const mr = new MediaRecorder(stream, { mimeType });
-      chunksRef.current = [];
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      const mime   = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus" : "audio/mp4";
+      const mr = new MediaRecorder(stream, { mimeType: mime });
+      chunks.current = [];
+      mr.ondataavailable = e => { if (e.data.size > 0) chunks.current.push(e.data); };
       mr.onstop = async () => {
-        stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: mimeType });
-        if (blob.size < 1000) { setSttError("Recording too short. Please speak longer."); return; }
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunks.current, { type: mime });
+        if (blob.size < 1000) { setSttError("Too short. Try again."); return; }
         setSttLoading(true);
         const fd = new FormData();
-        fd.append("audio", blob, `recording.${mimeType.includes("mp4") ? "mp4" : "webm"}`);
+        fd.append("audio", blob, mime.includes("mp4") ? "rec.mp4" : "rec.webm");
         try {
-          const res = await fetch("/api/stt", { method: "POST", body: fd });
+          const res  = await fetch("/api/stt", { method:"POST", body:fd });
           const data = await res.json();
-          if (data.text?.trim()) {
-            setAnswer((prev) => prev ? prev + " " + data.text : data.text);
-          } else {
-            setSttError("Could not understand audio. Please type your answer.");
-          }
-        } catch { setSttError("Voice transcription failed. Please type your answer."); }
-        finally { setSttLoading(false); }
+          if (data.text?.trim()) setAnswer(p => p ? p + " " + data.text : data.text);
+          else setSttError("Could not understand. Please type your answer.");
+        } catch { setSttError("Transcription failed."); }
+        finally  { setSttLoading(false); }
       };
       mr.start(100);
-      mediaRecorderRef.current = mr;
+      mrRef.current = mr;
       setRecording(true);
-    } catch { setSttError("Microphone access denied. Please type your answer."); }
-  };
+    } catch { setSttError("Microphone access denied."); }
+  }
 
-  const stopRecording = () => { mediaRecorderRef.current?.stop(); setRecording(false); };
+  function stopRecording() { mrRef.current?.stop(); setRecording(false); }
 
-  const submitAnswer = async () => {
+  async function submitAnswer() {
     if (!answer.trim()) return;
     setSubmitting(true);
-    setFadeIn(false);
-    const res = await fetch("/api/evaluate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, questionIndex: currentIndex, answer }),
-    });
-    const data = await res.json();
-    const newScores = [...scores, data.score];
-    setScores(newScores);
-    if (currentIndex + 1 >= questions.length) {
-      await fetch("/api/learning", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
+    if (timerRef.current) clearInterval(timerRef.current);
+    try {
+      const res  = await fetch("/api/evaluate", {
+        method:  "POST",
+        headers: { "Content-Type":"application/json" },
+        body:    JSON.stringify({ sessionId, questionIndex: idx, answer }),
       });
-      setDone(true);
-      setTimeout(() => { window.location.href = `/results?sessionId=${sessionId}`; }, 1800);
-    } else {
-      setTimeout(() => {
-        setCurrentIndex(currentIndex + 1);
-        setAnswer(""); setSttError("");
-        setFadeIn(true);
-      }, 300);
-    }
-    setSubmitting(false);
-  };
+      const data = await res.json();
+      const sc   = data.score || {};
+      setLastScore(sc);
+      setLastFeedback(sc.feedback || "");
+      setScores(prev => { const n = [...prev]; n[idx] = sc; return n; });
 
+      if (idx + 1 >= questions.length) {
+        fetch("/api/learning", {
+          method:  "POST",
+          headers: { "Content-Type":"application/json" },
+          body:    JSON.stringify({ sessionId }),
+        }).catch(() => {});
+        setDone(true);
+        setTimeout(() => { window.location.href = `/results?sessionId=${sessionId}`; }, 1800);
+      } else {
+        setIdx(i => i + 1);
+        setAnswer(""); setSttError(""); setLastFeedback(""); setLastScore(null);
+        setTimerPulse(false);
+      }
+    } finally { setSubmitting(false); }
+  }
+
+  const progress   = questions.length > 0 ? (idx / questions.length) * 100 : 0;
+  const timerColor = timeLeft > 60 ? "var(--green)" : timeLeft > 30 ? "var(--amber)" : "var(--red)";
+  const wordCount  = answer.trim().split(/\s+/).filter(Boolean).length;
+  const avgScore   = scores.filter(Boolean).length > 0
+    ? Math.round(scores.filter(Boolean).reduce((s, sc) =>
+        s + ((sc.technical + sc.communication + sc.confidence) / 3), 0
+      ) / scores.filter(Boolean).length * 10) / 10
+    : null;
+
+  const companyColor    = COMPANY_COLORS[company]    || "#64748b";
+  const difficultyColor = DIFFICULTY_COLORS[difficulty] || "#f59e0b";
+  const companyLabel    = company.charAt(0).toUpperCase() + company.slice(1);
+  const difficultyLabel = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+
+  /* ── Loading ── */
   if (loading) return (
-    <main className="min-h-screen bg-[#080C10] text-white flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-14 h-14 border-2 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin mx-auto mb-6" />
-        <p className="text-zinc-500 text-sm">Generating your personalized questions...</p>
-        <div className="flex justify-center gap-1 mt-4">
-          {[0,1,2].map(i => <div key={i} className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />)}
+    <div style={{ minHeight:"100vh", background:"var(--bg)", color:"var(--text)", display:"flex", flexDirection:"column" }}>
+      <div className="aurora-bg"><div className="aurora-orb"/></div>
+      <nav className="site-nav">
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div className="logo-mark">P</div>
+          <span style={{ fontWeight:800, fontSize:17 }}>PrepMind<span style={{ color:"var(--green)" }}> AI</span></span>
+        </div>
+        <ThemeToggle />
+      </nav>
+      <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:20 }}>
+        <svg className="anim-spin" width="40" height="40" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="rgba(16,185,129,0.15)" strokeWidth="2.5"/>
+          <path d="M12 2a10 10 0 0 1 10 10" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round"/>
+        </svg>
+        <div style={{ textAlign:"center" }}>
+          <h2 style={{ fontWeight:700, fontSize:20, marginBottom:6 }}>
+            PrepMind AI is generating your questions…
+          </h2>
+          <p style={{ color:"var(--text-2)", fontSize:13 }}>
+            Personalising 6 questions from your resume
+          </p>
+        </div>
+        <div style={{ display:"flex", gap:6 }}>
+          {[0,1,2].map(i => <span key={i} className="live-dot" style={{ animationDelay:`${i*0.25}s` }}/>)}
         </div>
       </div>
-    </main>
+    </div>
   );
 
+  /* ── Done ── */
   if (done) return (
-    <main className="min-h-screen bg-[#080C10] text-white flex items-center justify-center">
-      <div className="text-center">
-        <div className="text-6xl mb-4 animate-bounce">🎉</div>
-        <h2 className="text-2xl font-black bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Interview Complete!</h2>
-        <p className="text-zinc-500 mt-2 text-sm">Generating your results...</p>
+    <div style={{ minHeight:"100vh", background:"var(--bg)", color:"var(--text)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div className="anim-scale-in" style={{ textAlign:"center" }}>
+        <div style={{ fontSize:60, marginBottom:14 }}>🎉</div>
+        <h2 className="gradient-text" style={{ fontWeight:900, fontSize:28, marginBottom:8 }}>
+          Interview Complete!
+        </h2>
+        <p style={{ color:"var(--text-2)", fontSize:14 }}>
+          PrepMind AI is analysing your answers…
+        </p>
+        <div style={{ display:"flex", gap:6, justifyContent:"center", marginTop:20 }}>
+          {[0,1,2].map(i => <span key={i} className="live-dot" style={{ animationDelay:`${i*0.2}s` }}/>)}
+        </div>
       </div>
-    </main>
+    </div>
   );
 
-  const progress = (currentIndex / questions.length) * 100;
-  const lastScore = scores[scores.length - 1];
-
+  /* ── Interview ── */
   return (
-    <main className="min-h-screen bg-[#080C10] text-white">
-      <div className="fixed inset-0 bg-[linear-gradient(rgba(0,200,100,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,200,100,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
+    <div style={{ minHeight:"100vh", background:"var(--bg)", color:"var(--text)", display:"flex", flexDirection:"column" }}>
+      <div className="aurora-bg"><div className="aurora-orb"/></div>
 
-      <nav className="relative z-10 flex items-center justify-between px-8 py-5 border-b border-white/5">
-        <div onClick={() => { window.location.href = "/"; }} className="flex items-center gap-3 cursor-pointer group">
-          <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-xl flex items-center justify-center">
-            <span className="text-black font-black text-sm">P</span>
+      {/* NAV */}
+      <nav className="site-nav" style={{ flexShrink:0 }}>
+        <button
+          onClick={() => { if (confirm("Exit? Progress will be lost.")) window.location.href="/"; }}
+          style={{ display:"flex", alignItems:"center", gap:10, background:"none", border:"none", cursor:"pointer", color:"var(--text)" }}
+        >
+          <div className="logo-mark">P</div>
+          <span style={{ fontWeight:800, fontSize:16 }}>PrepMind<span style={{ color:"var(--green)" }}> AI</span></span>
+        </button>
+
+        {/* Progress */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, flex:1, maxWidth:300, margin:"0 auto" }}>
+          <span className="label-mono" style={{ flexShrink:0 }}>Q{idx+1}/{questions.length}</span>
+          <div className="progress-track" style={{ flex:1 }}>
+            <div className="progress-fill" style={{ width:`${progress}%` }}/>
           </div>
-          <span className="font-bold text-base">PrepMind <span className="text-emerald-400">AI</span></span>
+          <span className="label-mono" style={{ flexShrink:0 }}>{Math.round(progress)}%</span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-zinc-600 text-xs">Q{currentIndex + 1}/{questions.length}</span>
-          <div className="w-20 h-1.5 bg-white/5 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 transition-all duration-500" style={{ width: `${progress}%` }} />
+
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          {/* Timer — pulses red when ≤30s */}
+          <div style={{
+            padding:"5px 14px", borderRadius:10,
+            background:`${timerColor}14`,
+            border:`1px solid ${timerColor}30`,
+            fontFamily:"'JetBrains Mono',monospace",
+            fontSize:14, fontWeight:700, color:timerColor,
+            letterSpacing:"0.06em",
+            animation: timerPulse ? "pulse-timer 0.8s ease-in-out infinite" : "none",
+            transition:"color 0.3s, border-color 0.3s, background 0.3s",
+          }}>
+            {String(Math.floor(timeLeft/60)).padStart(2,"0")}:{String(timeLeft%60).padStart(2,"0")}
           </div>
+          <ThemeToggle />
         </div>
       </nav>
 
-      <div className="relative z-10 max-w-2xl mx-auto px-6 pt-10 pb-24">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/8 text-emerald-400 text-xs font-semibold mb-8">
-          <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-          Step 2 of 3 — Interview Session
-        </div>
+      {/* SPLIT LAYOUT */}
+      <div style={{
+        flex:1, display:"flex", flexDirection:"row",
+        overflow:"hidden", position:"relative", zIndex:1,
+        minHeight:"calc(100vh - 62px)",
+      }}>
 
-        {/* Question Card */}
-        <div className={`p-8 rounded-2xl border border-white/6 bg-white/2 mb-6 transition-all duration-300 ${fadeIn ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
-          <div className="flex items-center justify-between mb-5">
-            <span className="text-emerald-400 text-xs font-black font-mono tracking-widest">QUESTION {currentIndex + 1}/{questions.length}</span>
-            <span className="text-zinc-700 text-xs">{Math.round(progress)}% complete</span>
-          </div>
-          <h2 className="text-xl font-bold text-white leading-relaxed">{questions[currentIndex]}</h2>
-        </div>
+        {/* LEFT */}
+        <div style={{ width:"50%", minWidth:0, display:"flex", flexDirection:"column", borderRight:"1px solid var(--border)", overflow:"hidden" }}>
 
-        {/* Last score badge */}
-        {lastScore && (
-          <div className="flex gap-2 mb-4">
-            {[
-              { label: "Comm", val: lastScore.communication, color: "text-blue-400" },
-              { label: "Tech", val: lastScore.technical, color: "text-purple-400" },
-              { label: "Conf", val: lastScore.confidence, color: "text-emerald-400" },
-            ].map(s => (
-              <div key={s.label} className="flex-1 px-3 py-2 rounded-xl bg-white/2 border border-white/5 text-center">
-                <div className={`text-sm font-bold ${s.color}`}>{s.val}/10</div>
-                <div className="text-zinc-700 text-[10px]">{s.label}</div>
+          {/* AI avatar */}
+          <div style={{ padding:"18px 24px", borderBottom:"1px solid var(--border)", background:"var(--glass-inner)", flexShrink:0 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <div style={{
+                width:42, height:42, borderRadius:13, flexShrink:0,
+                background:"linear-gradient(135deg,var(--green),var(--cyan))",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:20, boxShadow:"0 0 18px var(--green-glow)",
+              }}>🤖</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:700, fontSize:14 }}>PrepMind AI Interviewer</div>
+                <div style={{ display:"flex", alignItems:"center", gap:6, marginTop:3 }}>
+                  <span className="live-dot"/>
+                  <span className="label-accent">Live Session</span>
+                </div>
               </div>
-            ))}
+              {/* Company + difficulty badges */}
+              <div style={{ display:"flex", gap:6, flexShrink:0 }}>
+                <span className="badge" style={{ background:`${companyColor}15`, border:`1px solid ${companyColor}30`, color:companyColor, fontSize:10 }}>
+                  {companyLabel}
+                </span>
+                <span className="badge" style={{ background:`${difficultyColor}15`, border:`1px solid ${difficultyColor}30`, color:difficultyColor, fontSize:10 }}>
+                  {difficultyLabel}
+                </span>
+              </div>
+              {avgScore !== null && (
+                <div style={{ textAlign:"center", marginLeft:4 }}>
+                  <div style={{ fontWeight:900, fontSize:18, color:"var(--green)" }}>{avgScore}/10</div>
+                  <div className="label-mono">Avg</div>
+                </div>
+              )}
+            </div>
           </div>
-        )}
 
-        {/* Answer */}
-        <div className="mb-4">
-          <label className="text-zinc-500 text-xs font-semibold uppercase tracking-widest mb-2 block">Your Answer</label>
-          <textarea value={answer} onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Type your answer here, or use the microphone below..."
-            className="w-full h-36 bg-white/2 border border-white/8 rounded-2xl p-4 text-white placeholder-zinc-700 resize-none focus:outline-none focus:border-emerald-500/40 focus:bg-emerald-500/3 transition-all duration-200 text-sm leading-relaxed"
-          />
-          <div className="flex justify-between mt-1">
-            <span className="text-zinc-700 text-xs">{answer.length} chars</span>
-            {answer.length > 50 && <span className="text-emerald-600 text-xs">✓ Good length</span>}
+          {/* Scrollable content */}
+          <div style={{ flex:1, padding:"20px 24px", overflowY:"auto", display:"flex", flexDirection:"column", gap:16 }}>
+
+            {/* Question */}
+            <div>
+              <div className="badge badge-green" style={{ marginBottom:10 }}>
+                <span className="label-accent">Question {idx+1} of {questions.length}</span>
+              </div>
+              <div className="glass-card" style={{ padding:"18px 20px" }}>
+                <p style={{ fontSize:15, fontWeight:600, lineHeight:1.65 }}>{questions[idx]}</p>
+              </div>
+            </div>
+
+            {/* STAR */}
+            <div>
+              <p className="label-mono" style={{ marginBottom:10 }}>STAR Framework Detection</p>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+                {([
+                  { k:"S" as const, label:"Situation", desc:"Set the context" },
+                  { k:"T" as const, label:"Task",      desc:"Your responsibility" },
+                  { k:"A" as const, label:"Action",    desc:"Steps you took" },
+                  { k:"R" as const, label:"Result",    desc:"Outcome achieved" },
+                ]).map(s => (
+                  <div key={s.k} style={{
+                    padding:"12px 14px", borderRadius:12,
+                    background: star[s.k] ? "var(--green-dim)" : "var(--glass-inner)",
+                    border:`1px solid ${star[s.k] ? "var(--green-border)" : "var(--border)"}`,
+                    boxShadow: star[s.k] ? "0 0 12px var(--green-glow)" : "none",
+                    transition:"all 0.35s ease",
+                  }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:3 }}>
+                      <div style={{
+                        width:22, height:22, borderRadius:6,
+                        background: star[s.k] ? "var(--green)" : "var(--glass-inner)",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        fontWeight:900, fontSize:11,
+                        color: star[s.k] ? "#000" : "var(--text-3)",
+                        transition:"all 0.35s ease",
+                        flexShrink:0,
+                      }}>{star[s.k] ? "✓" : s.k}</div>
+                      <span style={{ fontSize:12, fontWeight:700, color:star[s.k]?"var(--text)":"var(--text-3)", transition:"color 0.35s" }}>{s.label}</span>
+                    </div>
+                    <p style={{ fontSize:11, color:"var(--text-3)", paddingLeft:30 }}>{s.desc}</p>
+                  </div>
+                ))}
+              </div>
+              {/* STAR completion message */}
+              {Object.values(star).every(Boolean) && (
+                <div className="glass-green anim-fade-in" style={{ padding:"8px 14px", marginTop:8, textAlign:"center" }}>
+                  <p style={{ fontSize:12, fontWeight:700, color:"var(--green)" }}>
+                    ✨ Perfect STAR answer detected!
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* AI feedback */}
+            {lastFeedback && (
+              <div className="glass-green anim-fade-in" style={{ padding:"13px 16px" }}>
+                <p className="label-accent" style={{ marginBottom:6 }}>🤖 PrepMind AI Feedback</p>
+                <p style={{ fontSize:13, color:"var(--text-2)", lineHeight:1.65 }}>{lastFeedback}</p>
+              </div>
+            )}
+
+            {/* Last scores */}
+            {lastScore && (
+              <div>
+                <p className="label-mono" style={{ marginBottom:8 }}>Previous Answer</p>
+                <div style={{ display:"flex", gap:8 }}>
+                  {[
+                    { label:"Technical",     val:lastScore.technical||0,     color:"var(--violet)" },
+                    { label:"Communication", val:lastScore.communication||0, color:"var(--cyan)"   },
+                    { label:"Confidence",    val:lastScore.confidence||0,    color:"var(--green)"  },
+                  ].map(s => (
+                    <div key={s.label} className="glass-card" style={{ flex:1, padding:"10px 8px", textAlign:"center", borderRadius:12 }}>
+                      <div style={{ fontWeight:800, fontSize:16, color:s.color }}>{s.val}/10</div>
+                      <div className="label-mono" style={{ marginTop:2 }}>{s.label.slice(0,4)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom nav */}
+          <div style={{ padding:"14px 24px", borderTop:"1px solid var(--border)", background:"var(--glass-inner)", flexShrink:0, display:"flex", gap:10 }}>
+            <button className="btn-ghost" style={{ flex:1 }}
+              disabled={idx === 0 || submitting}
+              onClick={() => { setIdx(i => i-1); setAnswer(""); setLastFeedback(""); setLastScore(null); setTimerPulse(false); }}>
+              ← Previous
+            </button>
+            <button className="btn-primary" style={{ flex:2 }}
+              disabled={!answer.trim() || submitting}
+              onClick={submitAnswer}>
+              {submitting ? (
+                <span style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <svg className="anim-spin" width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="rgba(0,0,0,0.2)" strokeWidth="3"/>
+                    <path d="M12 2a10 10 0 0 1 10 10" stroke="#000" strokeWidth="3" strokeLinecap="round"/>
+                  </svg>
+                  Analysing…
+                </span>
+              ) : idx+1 >= questions.length
+                ? "Finish Interview →"
+                : `Submit & Next (${idx+2}/${questions.length}) →`}
+            </button>
           </div>
         </div>
 
-        {sttLoading && (
-          <div className="mb-3 px-4 py-2 rounded-xl bg-emerald-500/8 border border-emerald-500/15 text-emerald-400 text-xs flex items-center gap-2">
-            <span className="w-3 h-3 border border-emerald-400 border-t-transparent rounded-full animate-spin" />
-            Transcribing your voice...
-          </div>
-        )}
+        {/* RIGHT */}
+        <div style={{ width:"50%", minWidth:0, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          <div style={{ flex:1, padding:"20px 24px", display:"flex", flexDirection:"column", gap:14, overflowY:"auto" }}>
 
-        {sttError && (
-          <div className="mb-3 px-4 py-2 rounded-xl bg-yellow-500/8 border border-yellow-500/15 text-yellow-400 text-xs">{sttError}</div>
-        )}
-
-        <div className="flex gap-3">
-          <button onClick={recording ? stopRecording : startRecording}
-            className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
-              recording ? "bg-red-500/15 border border-red-500/30 text-red-400 animate-pulse" :
-              "border border-white/8 text-zinc-400 hover:border-emerald-500/30 hover:text-emerald-400 hover:bg-emerald-500/5"
-            }`}
-          >
-            <span>{recording ? "⏹" : "🎤"}</span>
-            {recording ? "Stop" : "Record"}
-          </button>
-
-          <button onClick={submitAnswer} disabled={!answer.trim() || submitting}
-            className={`flex-1 py-3 font-bold rounded-2xl text-sm transition-all duration-200 ${
-              answer.trim() && !submitting
-                ? "bg-gradient-to-r from-emerald-500 to-cyan-500 text-black hover:from-emerald-400 hover:to-cyan-400 shadow-lg shadow-emerald-500/20"
-                : "bg-white/3 text-zinc-700 cursor-not-allowed border border-white/5"
-            }`}
-          >
-            {submitting ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
-                Evaluating...
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <p className="label-mono">Your Answer</p>
+              <span style={{
+                fontFamily:"'JetBrains Mono',monospace", fontSize:10,
+                color: wordCount >= 30 ? "var(--green)" : "var(--amber)",
+              }}>
+                {wordCount} words {wordCount >= 30 ? "✓ Good length" : "· aim for 30+"}
               </span>
-            ) : currentIndex + 1 >= questions.length ? "Finish Interview →" : "Next Question →"}
-          </button>
-        </div>
+            </div>
 
-        {recording && <p className="mt-2 text-red-400 text-xs animate-pulse text-center">🔴 Recording... speak now, click Stop when done</p>}
+            <textarea
+              value={answer}
+              onChange={e => setAnswer(e.target.value)}
+              placeholder="Type your answer here, or use the microphone below.&#10;&#10;Be specific — use examples from your experience. Apply the STAR method."
+              className="pm-input"
+              style={{ flex:1, minHeight:200, lineHeight:1.75 }}
+            />
+
+            {/* Voice */}
+            <button
+              onClick={recording ? stopRecording : startRecording}
+              style={{
+                display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+                padding:"12px", borderRadius:13, fontWeight:600, fontSize:13,
+                cursor:"pointer", fontFamily:"'Inter',sans-serif",
+                background: recording ? "rgba(248,113,113,0.10)" : "var(--glass-inner)",
+                border:`1px solid ${recording ? "rgba(248,113,113,0.35)" : "var(--border)"}`,
+                color: recording ? "var(--red)" : "var(--text-2)",
+                transition:"all 0.2s",
+              }}
+            >
+              <span>{recording ? "⏹" : "🎤"}</span>
+              {recording ? "Stop Recording" : "Record with Microphone"}
+              {recording && <span className="live-dot" style={{ marginLeft:4 }}/>}
+            </button>
+
+            {sttLoading && (
+              <div className="glass-green anim-fade-in" style={{ padding:"10px 14px", display:"flex", alignItems:"center", gap:8, borderRadius:12 }}>
+                <svg className="anim-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="rgba(16,185,129,0.2)" strokeWidth="3"/>
+                  <path d="M12 2a10 10 0 0 1 10 10" stroke="var(--green)" strokeWidth="3" strokeLinecap="round"/>
+                </svg>
+                <span style={{ fontSize:12, color:"var(--green)" }}>
+                  PrepMind AI is transcribing…
+                </span>
+              </div>
+            )}
+
+            {sttError && (
+              <div style={{ padding:"10px 14px", borderRadius:12, background:"var(--amber-dim)", border:"1px solid var(--amber-border)", color:"var(--amber)", fontSize:12 }}>
+                {sttError}
+              </div>
+            )}
+
+            <div>
+              <p className="label-mono" style={{ marginBottom:8 }}>Private Notes (not evaluated)</p>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Jot down key points or keywords…"
+                className="pm-input"
+                style={{ height:72, fontSize:12 }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
-    </main>
+
+      <style>{`
+        @keyframes pulse-timer {
+          0%,100% { transform:scale(1);   box-shadow:0 0 0 0 rgba(239,68,68,0); }
+          50%      { transform:scale(1.04); box-shadow:0 0 0 4px rgba(239,68,68,0.2); }
+        }
+      `}</style>
+    </div>
   );
 }
 

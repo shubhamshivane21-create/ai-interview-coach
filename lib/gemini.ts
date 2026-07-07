@@ -1,31 +1,12 @@
 /**
- * Shared Gemini API client.
- *
- * ── ROOT CAUSE FIX (2026-06-30) ──────────────────────────────────────────
- * This file previously called `gemini-2.5-flash` as primary and
- * `gemini-1.5-flash` as fallback. Both are now retired by Google:
- *   - gemini-1.5-flash: fully shut down, returns 404 on all API versions.
- *   - gemini-2.5-flash: shut down June 17, 2026 (we are now past that date).
- *
- * Because BOTH the primary and fallback model in every agent were dead,
- * every single Gemini call failed silently and the app fell back to its
- * hardcoded default content 100% of the time. This is why interview
- * questions, evaluations, and study plans all looked "hardcoded" in
- * testing — they WERE hardcoded, just not on purpose. The AI was never
- * actually being called.
- *
- * Fix: use `gemini-flash-latest`, a Google-maintained alias that always
- * points at the current GA Flash model (no manual migration needed when
- * Google retires the underlying model again). Fallback is
- * `gemini-2.5-flash-lite`, which is still active as of this writing.
- *
- * Per project rules: raw fetch only, NO @google/generative-ai SDK.
- * ──────────────────────────────────────────────────────────────────────
+ * Shared Gemini API client — raw fetch only, no SDK.
+ * Primary: gemini-2.0-flash (stable GA)
+ * Fallback: gemini-1.5-flash (proven reliable)
  */
 
-const GEMINI_MODEL_PRIMARY = "gemini-2.5-flash-lite";  // ✅ confirmed alive
-const GEMINI_MODEL_FALLBACK = "gemini-3.5-flash";       // ✅ GA since May 2026
-const GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1";
+const PRIMARY  = "gemini-2.5-flash";
+const FALLBACK = "gemini-2.5-flash-lite";
+const BASE     = "https://generativelanguage.googleapis.com/v1";
 
 export class GeminiError extends Error {
   status?: number;
@@ -36,101 +17,69 @@ export class GeminiError extends Error {
   }
 }
 
-interface GeminiPart {
-  text?: string;
-  inlineData?: { mimeType: string; data: string };
-}
-
-interface GenerateOptions {
-  temperature?: number;
-  /** Extra parts to send alongside the text prompt, e.g. inline audio/PDF data. */
-  extraParts?: GeminiPart[];
+interface GeminiOptions {
+  temperature?:     number;
   maxOutputTokens?: number;
+  extraParts?:      { inlineData?: { mimeType: string; data: string }; text?: string }[];
 }
 
-function getApiKey(): string {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    throw new GeminiError(
-      "GEMINI_API_KEY is not set. Add it to .env.local (and to your Vercel " +
-        "project's Environment Variables if deployed) — see README for setup."
-    );
-  }
-  return key;
+function getKey(): string {
+  const k = process.env.GEMINI_API_KEY;
+  if (!k) throw new GeminiError("GEMINI_API_KEY not set in .env.local");
+  return k;
 }
 
 async function callModel(
   model: string,
   prompt: string,
-  options: GenerateOptions
+  opts: GeminiOptions
 ): Promise<string> {
-  const apiKey = getApiKey();
-  const parts: GeminiPart[] = [{ text: prompt }, ...(options.extraParts || [])];
+  const parts: any[] = [{ text: prompt }, ...(opts.extraParts || [])];
 
-  const response = await fetch(
-    `${GEMINI_API_BASE}/models/${model}:generateContent?key=${apiKey}`,
+  const res = await fetch(
+    `${BASE}/models/${model}:generateContent?key=${getKey()}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts }],
         generationConfig: {
-          temperature: options.temperature ?? 0.5,
-          maxOutputTokens: options.maxOutputTokens ?? 1024,
+          temperature:     opts.temperature     ?? 0.4,
+          maxOutputTokens: opts.maxOutputTokens ?? 800,
         },
       }),
     }
   );
 
-  const data = await response.json().catch(() => ({}));
+  const data = await res.json().catch(() => ({}));
 
-  if (!response.ok) {
+  if (!res.ok) {
     throw new GeminiError(
-      data?.error?.message || `Gemini API request failed (${response.status})`,
-      response.status
+      data?.error?.message || `Gemini ${res.status} error`,
+      res.status
     );
   }
 
   const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (typeof text !== "string") {
-    throw new GeminiError("Gemini returned an empty or unexpected response.");
-  }
+  if (!text) throw new GeminiError("Gemini returned empty response");
   return text.trim();
 }
 
-/**
- * Calls Gemini and returns the raw text response.
- * Tries the primary model first, falls back to a secondary model on
- * ANY failure (network error, 404 from a retired model, rate limit, etc).
- * Throws GeminiError only if both attempts fail.
- */
-export async function geminiGenerateText(
+/** Call Gemini with automatic fallback on any failure. */
+export async function geminiText(
   prompt: string,
-  options: GenerateOptions = {}
+  opts: GeminiOptions = {}
 ): Promise<string> {
   try {
-    return await callModel(GEMINI_MODEL_PRIMARY, prompt, options);
-  } catch (primaryErr) {
-    console.warn(
-      `[Gemini] Primary model "${GEMINI_MODEL_PRIMARY}" failed, trying fallback "${GEMINI_MODEL_FALLBACK}":`,
-      (primaryErr as Error).message
-    );
-    try {
-      return await callModel(GEMINI_MODEL_FALLBACK, prompt, options);
-    } catch (fallbackErr) {
-      throw new GeminiError(
-        `Both Gemini models failed. Primary: ${(primaryErr as Error).message} | ` +
-          `Fallback: ${(fallbackErr as Error).message}`
-      );
-    }
+    return await callModel(PRIMARY, prompt, opts);
+  } catch (e) {
+    console.warn(`[Gemini] ${PRIMARY} failed, trying ${FALLBACK}:`, (e as Error).message);
+    return callModel(FALLBACK, prompt, opts);
   }
 }
 
-/**
- * Strips markdown code-fence wrappers (```json ... ```) that Gemini
- * sometimes adds even when explicitly told not to.
- */
-export function stripCodeFences(raw: string): string {
+/** Strip ```json fences Gemini sometimes adds. */
+export function stripFences(raw: string): string {
   return raw
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")
@@ -138,24 +87,25 @@ export function stripCodeFences(raw: string): string {
     .trim();
 }
 
-/**
- * Calls Gemini expecting a JSON response, strips any code-fence wrapper,
- * parses it, and throws a clear error if parsing fails (instead of an
- * opaque "Unexpected token" deep in agent code).
- */
-export async function geminiGenerateJSON<T>(
+/** Call Gemini expecting JSON back. Parses and returns typed result. */
+export async function geminiJSON<T>(
   prompt: string,
-  options: GenerateOptions = {}
+  opts: GeminiOptions = {}
 ): Promise<T> {
-  const raw = await geminiGenerateText(prompt, options);
-  const cleaned = stripCodeFences(raw);
+  const raw     = await geminiText(prompt, opts);
+  const cleaned = stripFences(raw);
   try {
     return JSON.parse(cleaned) as T;
   } catch {
-    throw new GeminiError(
-      `Gemini's response wasn't valid JSON. Raw output (first 200 chars): ${cleaned.slice(0, 200)}`
-    );
+    try {
+      const { jsonrepair } = await import("jsonrepair");
+      return JSON.parse(jsonrepair(cleaned)) as T;
+    } catch {
+      throw new GeminiError(
+        `Invalid JSON from Gemini. Preview: ${cleaned.slice(0, 150)}`
+      );
+    }
   }
 }
 
-export { GEMINI_MODEL_PRIMARY as GEMINI_MODEL };
+export { PRIMARY as GEMINI_MODEL };

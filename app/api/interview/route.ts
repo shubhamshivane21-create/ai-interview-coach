@@ -2,16 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateQuestions } from "@/agents/interviewAgent";
 import connectDB from "@/lib/mongodb";
 import Session from "@/models/Session";
-import { GeminiError } from "@/lib/gemini";
 
 export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    const { sessionId } = await req.json();
+    const { sessionId, company, difficulty } = await req.json();
 
     if (!sessionId) {
-      return NextResponse.json({ error: "Session ID required" }, { status: 400 });
+      return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
     }
 
     const session = await Session.findById(sessionId);
@@ -19,24 +18,41 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // Fix: if the interview was already generated (e.g. user refreshed the
-    // page), reuse the saved questions instead of calling Gemini again and
-    // overwriting any in-progress answers/scores.
+    // Reuse cached questions if already generated
     if (session.questions?.length > 0) {
-      return NextResponse.json({ success: true, questions: session.questions });
+      console.log(`📋 Reusing ${session.questions.length} cached questions`);
+      return NextResponse.json({
+        success:   true,
+        questions: session.questions,
+        source:    "cached",
+        company:   session.company || company || "general",
+        difficulty:session.difficulty || difficulty || "medium",
+      });
     }
 
-    const questions = await generateQuestions(session.resumeText);
+    // Read company/difficulty from session or request
+    const co   = session.company    || company    || "general";
+    const diff = session.difficulty || difficulty || "medium";
+
+    const { questions, source } = await generateQuestions(
+      session.resumeText, co, diff
+    );
+
+    if (source === "fallback") {
+      console.warn(`⚠️ Using fallback questions for session ${sessionId}`);
+    } else {
+      console.log(`✅ PrepMind AI generated ${questions.length} questions — company:${co} difficulty:${diff}`);
+    }
+
     session.questions = questions;
     await session.save();
 
-    return NextResponse.json({ success: true, questions });
-  } catch (error) {
-    console.error("Interview API Error:", error);
-    const status = error instanceof GeminiError ? 502 : 500;
+    return NextResponse.json({ success:true, questions, source, company:co, difficulty:diff });
+  } catch (error: any) {
+    console.error("🔥 Interview route error:", error?.message);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to generate questions" },
-      { status }
+      { error: error?.message || "Failed to generate questions" },
+      { status: 500 }
     );
   }
 }

@@ -1,49 +1,112 @@
-export async function generateQuestions(resumeSummary: string): Promise<string[]> {
+import { geminiText } from "@/lib/gemini";
+
+export interface GeneratedQuestions {
+  questions: string[];
+  source:    "ai" | "fallback";
+}
+
+/* ─── Company-specific question styles ──────────────────────────────────── */
+const COMPANY_CONTEXT: Record<string, string> = {
+  google:    "Focus on scalability, algorithms, data structures, system design at scale, and Googleyness (ambiguity, collaboration).",
+  amazon:    "Focus on Leadership Principles (ownership, dive deep, customer obsession), system design, and behavioural STAR stories.",
+  microsoft: "Focus on problem solving, growth mindset, collaboration, Azure/cloud concepts, and coding fundamentals.",
+  apple:     "Focus on attention to detail, user experience thinking, innovation, hardware-software integration, and quality.",
+  meta:      "Focus on product sense, data structures, distributed systems, move fast culture, and impact-driven answers.",
+  netflix:   "Focus on freedom and responsibility, senior-level ownership, streaming/distributed systems, and data-driven decisions.",
+  tcs:       "Focus on core CS fundamentals, project explanation, team work, adaptability, and process-oriented thinking.",
+  infosys:   "Focus on communication, project experience, basic CS concepts, client interaction, and growth mindset.",
+  accenture: "Focus on consulting mindset, client communication, adaptability, technology trends, and teamwork.",
+  startup:   "Focus on wearing multiple hats, fast learning, product thinking, ownership, and building from scratch.",
+  general:   "Balance technical depth with strong communication, STAR-method stories, and genuine career motivation.",
+};
+
+const DIFFICULTY_CONTEXT: Record<string, string> = {
+  easy:   "Keep questions simple — suitable for freshers and entry-level candidates. Avoid deep system design.",
+  medium: "Mix of moderate technical and behavioural questions for 1-3 year experience candidates.",
+  hard:   "Advanced technical depth, complex system design, and senior behavioural scenarios for 3-5 year candidates.",
+  expert: "Expert-level: distributed systems, architecture decisions, technical leadership for 5+ year senior candidates.",
+};
+
+export async function generateQuestions(
+  resumeSummary: string,
+  company    = "general",
+  difficulty = "medium"
+): Promise<GeneratedQuestions> {
   let resumeData: any = {};
   try { resumeData = JSON.parse(resumeSummary); } catch {}
 
-  const skills = (resumeData.skills || []).join(", ") || "Python, JavaScript";
-  const projects = (resumeData.projects || []).join("; ") || "various projects";
-  const experience = (resumeData.experience || []).join("; ") || "fresher";
-  const name = resumeData.name || "Candidate";
-  const contextLower = skills.toLowerCase();
-  const lang = contextLower.includes("python") ? "Python"
-    : contextLower.includes("java") && !contextLower.includes("javascript") ? "Java"
-    : contextLower.includes("javascript") || contextLower.includes("react") ? "JavaScript"
-    : contextLower.includes("c++") ? "C++" : "Python";
+  const name       = resumeData.name       || "Candidate";
+  const skills     = (resumeData.skills    || []).join(", ") || "programming";
+  const projects   = (resumeData.projects  || []).join("; ") || "various projects";
+  const experience = (resumeData.experience|| []).join("; ") || "fresher";
 
-  const prompt = `Generate 6 interview questions for ${name} (skills: ${skills}, projects: ${projects}).
-Mix: 1 DSA coding in ${lang}, 1 concept from their skills, 1 about their project, 1 system design, 1 behavioral, 1 HR.
-Return ONLY JSON array of 6 strings, no markdown: ["q1","q2","q3","q4","q5","q6"]`;
+  const low  = skills.toLowerCase();
+  const lang = low.includes("python")     ? "Python"
+    : low.includes("java") && !low.includes("javascript") ? "Java"
+    : low.includes("c++")                 ? "C++"
+    : low.includes("javascript") || low.includes("react") || low.includes("node") ? "JavaScript"
+    : "Python";
 
-  const tryModel = async (model: string, ver: string) => {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      { method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0.7,maxOutputTokens:800} }) }
-    );
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.error?.message || "failed");
-    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "[]";
+  const companyCtx    = COMPANY_CONTEXT[company]    || COMPANY_CONTEXT.general;
+  const difficultyCtx = DIFFICULTY_CONTEXT[difficulty] || DIFFICULTY_CONTEXT.medium;
+  const companyLabel  = company.charAt(0).toUpperCase() + company.slice(1);
+
+  const FALLBACK: GeneratedQuestions = {
+    source: "fallback",
+    questions: [
+      `Write a ${lang} function to find all pairs in an array that sum to a given target. Explain your time complexity.`,
+      `You listed ${skills.split(",")[0]?.trim() || "programming"} on your resume. Explain the most advanced concept you have used from it with a real example.`,
+      `Walk me through the most complex technical challenge in your project "${projects.split(";")[0]?.trim() || "your main project"}" and how you solved it.`,
+      `How would you design a scalable backend system that handles 10,000 concurrent users? What are the bottlenecks?`,
+      `Tell me about a time you had to learn a new technology quickly under a deadline. What was your approach?`,
+      `Where do you see yourself in 3 years and how does this ${companyLabel} Software Engineer role fit your career goals?`,
+    ],
   };
 
-  const fallback = [
-    `Write a ${lang} function to find all pairs in an array that sum to a given target.`,
-    `Explain the difference between ${lang === "Python" ? "lists and tuples" : "var, let, and const"} with examples.`,
-    `Walk me through the most complex technical challenge in one of your projects and how you solved it.`,
-    `How would you design a backend system that handles 10,000 concurrent users?`,
-    `Tell me about a time you learned a new technology quickly for a deadline. What was your approach?`,
-    `Where do you see yourself in 3 years and how does this role fit your career goals?`
-  ];
+  const prompt = `You are a senior technical interviewer at ${companyLabel}.
 
-  let raw = "";
-  try { raw = await tryModel("gemini-2.5-flash", "v1"); }
-  catch { try { raw = await tryModel("gemini-1.5-flash", "v1beta"); } catch { return fallback; } }
+Candidate: ${name}
+Skills: ${skills}
+Projects: ${projects}
+Experience: ${experience}
 
-  const cleaned = raw.replace(/^```json\s*/i,"").replace(/^```\s*/i,"").replace(/```\s*$/i,"").trim();
+Company interview style: ${companyCtx}
+Difficulty level: ${difficultyCtx}
+
+Generate exactly 6 interview questions tailored to this candidate for ${companyLabel} at ${difficulty} difficulty.
+
+Mix:
+1. One DSA/coding question in ${lang} appropriate for ${difficulty} level
+2. One deep-dive on a skill from their resume relevant to ${companyLabel}
+3. One question about their project "${projects.split(";")[0]?.trim()}"
+4. One system design question appropriate for ${difficulty} level and ${companyLabel} style
+5. One behavioural question aligned with ${companyLabel} culture
+6. One HR/motivation question specific to ${companyLabel}
+
+Rules:
+- Every question must be SPECIFIC to this candidate and ${companyLabel}
+- Match complexity to ${difficulty} difficulty
+- Each question max 2 sentences
+- Return ONLY a JSON array of 6 strings, no markdown, no extra text
+
+Example: ["question1","question2","question3","question4","question5","question6"]`;
+
   try {
-    const q: string[] = JSON.parse(cleaned);
-    if (!Array.isArray(q) || q.length < 3) throw new Error("bad array");
-    return q.slice(0, 6);
-  } catch { return fallback; }
+    const raw = await geminiText(prompt, {
+      temperature:     0.7,
+      maxOutputTokens: 700,
+    });
+    const cleaned = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i,     "")
+      .replace(/```\s*$/i,     "")
+      .trim();
+
+    const parsed = JSON.parse(cleaned);
+    if (!Array.isArray(parsed) || parsed.length < 3) throw new Error("bad array");
+    return { questions: parsed.slice(0, 6), source: "ai" };
+  } catch (e) {
+    console.error("[interviewAgent] Gemini failed, using fallback:", (e as Error).message);
+    return FALLBACK;
+  }
 }
