@@ -1,189 +1,150 @@
 # 🧠 PrepMind AI — AI Interview Coach
 
-> An AI-powered interview preparation platform built with Next.js 16, Gemini 2.5 Flash, MongoDB, and NextAuth.
+> An AI-powered interview preparation platform that turns your resume into a personalized mock-interview experience with instant feedback and a focused learning plan.
 
-![PrepMind AI](https://img.shields.io/badge/PrepMind-AI%20Interview%20Coach-emerald?style=for-the-badge)
 ![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?style=for-the-badge&logo=next.js)
-![Gemini](https://img.shields.io/badge/Gemini-2.5%20Flash-blue?style=for-the-badge&logo=google)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)
+![Gemini](https://img.shields.io/badge/Google_Gemini-AI-blue?style=for-the-badge&logo=google)
 ![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green?style=for-the-badge&logo=mongodb)
-![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=for-the-badge&logo=vercel)
-
----
+![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-black?style=for-the-badge&logo=vercel)
 
 ## 🌐 Live Demo
 
-> **[https://ai-interview-coach-red.vercel.app](https://ai-interview-coach-red.vercel.app)**
+[https://ai-interview-coach-red.vercel.app](https://ai-interview-coach-red.vercel.app)
 
----
+## ✨ Features
 
-## 🚀 What It Does
+- Resume PDF upload and AI-powered resume analysis
+- Personalized technical, DSA, and behavioral interview questions
+- Company-focused interview practice
+- Difficulty selection: easy, medium, and hard
+- Text and voice answer input
+- AI feedback for communication, technical accuracy, and confidence
+- STAR-method detection for behavioral answers
+- Personalized 7-day learning plan based on weak areas
+- Interview-session history for signed-in users
+- Score-trend chart to track interview progress
+- Google and GitHub OAuth sign-in
+- Responsive mobile-friendly UI
+- Dark/light theme support
+- Completion celebration with confetti
 
-1. **Upload Resume (PDF)** — AI reads your resume and extracts skills, projects, experience
-2. **AI Generates 6 Questions** — Personalized technical, DSA, and behavioral questions based on YOUR resume
-3. **Answer via Voice or Text** — Speak or type your answers using Gemini speech-to-text
-4. **AI Scores Each Answer** — Scored 0-10 on Communication, Technical accuracy, and Confidence
-5. **7-Day Study Plan** — AI identifies weak areas and builds a personalized day-by-day study plan
-6. **Session History** — All interviews saved with a Claude-style sidebar showing past sessions
-7. **Google & GitHub Sign-in** — Secure authentication via NextAuth.js
+## 🔄 How It Works
 
----
+1. Sign in with Google or GitHub.
+2. Upload your resume as a PDF.
+3. Select a target company and interview difficulty.
+4. Receive personalized AI-generated questions.
+5. Answer by typing or using the microphone.
+6. Get per-question feedback and scores.
+7. Review your strengths, weak areas, score trend, and learning plan.
 
 ## 🛠 Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 16.2.9 (Turbopack), TypeScript, Tailwind CSS |
-| AI/LLM | Google Gemini 2.5 Flash (via raw fetch) |
-| Speech-to-Text | Gemini Audio API |
-| Database | MongoDB Atlas (via Mongoose) |
-| Auth | NextAuth.js (Google + GitHub OAuth) |
-| Hosting | Vercel |
-
----
-
-## 👥 Team Division
-
-| Member | Role | Branch |
-|--------|------|--------|
-| Member 1 | Frontend + Resume Upload | `feature/frontend` |
-| Member 2 | Backend Agents + API Routes | `feature/agents` |
-| Member 3 | Voice Pipeline + Database + GitHub | `feature/voice-db` |
-
----
+|---|---|
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS |
+| AI | Google Gemini API |
+| Database | MongoDB Atlas with Mongoose |
+| Authentication | NextAuth.js with Google and GitHub OAuth |
+| Charts | Score-trend visualization |
+| Deployment | Vercel |
 
 ## 📁 Project Structure
 
-```
+```text
 ai-interview-coach/
 ├── app/
-│   ├── page.tsx                  ← Landing page with auth
-│   ├── upload/page.tsx           ← Resume upload page
-│   ├── interview/page.tsx        ← Interview session page
-│   ├── results/page.tsx          ← Scores + study plan
-│   ├── dashboard/page.tsx        ← History sidebar
-│   ├── sign-in/page.tsx          ← Google + GitHub sign in
-│   └── api/
-│       ├── resume/route.ts       ← Parse PDF resume
-│       ├── interview/route.ts    ← Generate questions
-│       ├── evaluate/route.ts     ← Score answers
-│       ├── learning/route.ts     ← Generate study plan
-│       ├── stt/route.ts          ← Speech to text
-│       ├── tts/route.ts          ← Text to speech
-│       ├── sessions/route.ts     ← Session history
-│       └── auth/[...nextauth]/   ← NextAuth config
+│   ├── page.tsx                  # Landing page
+│   ├── upload/page.tsx           # Resume upload and setup
+│   ├── interview/page.tsx        # Mock interview experience
+│   ├── results/page.tsx          # Feedback, scores, and study plan
+│   ├── dashboard/page.tsx        # Session history and score trends
+│   └── api/                      # API routes
 ├── agents/
-│   ├── resumeAgent.ts            ← PDF parsing via Gemini
-│   ├── interviewAgent.ts         ← Question generation
-│   ├── evaluationAgent.ts        ← Answer scoring
-│   └── learningAgent.ts          ← Study plan generation
-├── lib/
-│   └── mongodb.ts                ← MongoDB connection
+│   ├── resumeAgent.ts            # Resume analysis
+│   ├── interviewAgent.ts         # Question generation
+│   ├── evaluationAgent.ts        # Answer evaluation
+│   └── learningAgent.ts          # Learning-plan generation
+├── components/                   # Reusable UI components
+├── lib/                          # Auth, Gemini, and database helpers
 ├── models/
-│   └── Session.ts                ← MongoDB session schema
-└── .env.local                    ← API keys (never commit!)
+│   └── Session.ts                # MongoDB interview-session model
+└── .env.local                    # Local environment variables
 ```
 
----
+## ⚙️ Local Setup
 
-## ⚙️ Setup & Installation
+### 1. Clone the repository
 
-### 1. Clone the repo
 ```bash
 git clone https://github.com/shubhamshivane21-create/ai-interview-coach.git
 cd ai-interview-coach
 ```
 
 ### 2. Install dependencies
+
 ```bash
 npm install
 ```
 
 ### 3. Create `.env.local`
+
 ```env
 GEMINI_API_KEY=your_gemini_api_key
 MONGODB_URI=your_mongodb_connection_string
 NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your_secret_key
+NEXTAUTH_SECRET=your_nextauth_secret
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GITHUB_CLIENT_ID=your_github_client_id
 GITHUB_CLIENT_SECRET=your_github_client_secret
 ```
 
-### 4. Run development server
+### 4. Start the app
+
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000).
 
----
+## 🔐 Environment Variables
 
-## 🔑 Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `GEMINI_API_KEY` | Google AI Studio API key |
+| Variable | Purpose |
+|---|---|
+| `GEMINI_API_KEY` | Google Gemini API access |
 | `MONGODB_URI` | MongoDB Atlas connection string |
-| `NEXTAUTH_URL` | App URL (http://localhost:3000 for dev) |
-| `NEXTAUTH_SECRET` | Random secret string for NextAuth |
-| `GOOGLE_CLIENT_ID` | Google OAuth Client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret |
-| `GITHUB_CLIENT_ID` | GitHub OAuth App Client ID |
-| `GITHUB_CLIENT_SECRET` | GitHub OAuth App Client Secret |
-
----
-
-## 🎯 Features
-
-- ✅ Resume PDF upload with AI parsing (Gemini reads PDF natively)
-- ✅ 6 personalized questions (DSA + Technical + Behavioral)
-- ✅ Voice answers via microphone (Gemini STT)
-- ✅ Real-time scoring on 3 metrics (0-10 each)
-- ✅ 7-day personalized study plan
-- ✅ Session history with dashboard sidebar
-- ✅ Google & GitHub OAuth sign-in
-- ✅ MongoDB session storage
-- ✅ Auto-fallback: gemini-2.5-flash → gemini-2.5-flash-lite on quota limit
-- ✅ Deployed on Vercel at [ai-interview-coach-red.vercel.app](https://ai-interview-coach-red.vercel.app)
-
----
-
-## 📊 Agent Architecture
-
-```
-User (Resume PDF + Voice/Text)
-        │
-        ▼
-  Resume Agent      ← Sends PDF to Gemini, extracts skills/projects
-        │
-        ▼
-  Interview Agent   ← Generates 6 personalized questions
-        │
-        ▼
-  Evaluation Agent  ← Scores each answer (0-10) on 3 metrics
-        │
-        ▼
-  Learning Agent    ← Creates 7-day study plan from weak areas
-        │
-        ▼
-    MongoDB         ← Stores sessions, scores, study plans
-```
-
----
+| `NEXTAUTH_URL` | Application URL |
+| `NEXTAUTH_SECRET` | NextAuth encryption secret |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret |
+| `GITHUB_CLIENT_ID` | GitHub OAuth client ID |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret |
 
 ## 🚀 Deployment
 
-Live at: **[https://ai-interview-coach-red.vercel.app](https://ai-interview-coach-red.vercel.app)**
+The project is deployed on Vercel.
 
-To deploy your own:
-1. Push to GitHub
-2. Connect repo to [vercel.com](https://vercel.com)
-3. Add all environment variables in Vercel dashboard
-4. Update `NEXTAUTH_URL` to your Vercel domain
-5. Add production callback URLs to Google & GitHub OAuth apps
-6. Deploy!
+To deploy your own version:
+
+1. Push the project to GitHub.
+2. Import the repository into Vercel.
+3. Add all environment variables in Vercel project settings.
+4. Set `NEXTAUTH_URL` to your production domain.
+5. Add the production callback URLs in Google and GitHub OAuth settings.
+6. Deploy.
+
+## 📌 Recent Improvements
+
+- Company selector and difficulty levels
+- Score-trend chart for performance tracking
+- STAR-method feedback for behavioral responses
+- Improved session-history experience
+- Responsive layouts for mobile, tablet, and desktop
+- PrepMind AI branding and refined UI
+- Confetti celebration after interview completion
 
 ---
 
-*Built by a team of 3 students — Week 2 College Project 2026*
+Built as an AI-powered interview-practice project using Next.js, Gemini, MongoDB, and NextAuth.
