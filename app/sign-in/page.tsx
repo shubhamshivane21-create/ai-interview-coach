@@ -32,6 +32,7 @@ export default function SignInPage() {
 
   return (
     <div
+      className="sign-in-page"
       style={{
         minHeight:"100vh", background:"var(--bg)", color:"var(--text)",
         display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
@@ -41,7 +42,7 @@ export default function SignInPage() {
       <div className="grid-overlay" />
 
       {/* Nav */}
-      <nav className="site-nav" style={{ position:"fixed", top:0, left:0, right:0 }}>
+      <nav className="site-nav sign-in-nav" style={{ position:"fixed", top:0, left:0, right:0 }}>
         <button
           onClick={() => { window.location.href = "/"; }}
           style={{ display:"flex", alignItems:"center", gap:10, background:"none", border:"none", cursor:"pointer", color:"var(--text)" }}
@@ -54,7 +55,7 @@ export default function SignInPage() {
 
       {/* Card */}
       <div
-        className="glass-card anim-scale-in"
+        className="glass-card anim-scale-in sign-in-card"
         style={{ position:"relative", zIndex:1, width:"100%", maxWidth:420, padding:"0 24px" }}
       >
         {/* Logo */}
@@ -165,6 +166,15 @@ export default function SignInPage() {
           By signing in you agree to our Terms &amp; Privacy Policy
         </p>
       </div>
+
+      <style>{`
+        @media (max-width: 640px) {
+          .sign-in-page { justify-content: flex-start !important; padding: 92px 16px 32px; }
+          .sign-in-nav { padding: 8px 14px; }
+          .sign-in-card { max-width: none !important; padding: 24px 18px !important; }
+        }
+      `}</style>
     </div>
   );
 }
+

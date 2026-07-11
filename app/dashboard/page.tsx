@@ -234,7 +234,7 @@ function DashboardContent() {
       <div className="grid-overlay"/>
 
       {/* NAV */}
-      <nav className="site-nav" style={{ position:"sticky", top:0, zIndex:50, flexShrink:0 }}>
+      <nav className="site-nav dashboard-nav" style={{ position:"sticky", top:0, zIndex:50, flexShrink:0 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <button onClick={() => { window.location.href="/"; }}
             style={{ display:"flex", alignItems:"center", gap:10, background:"none", border:"none", cursor:"pointer", color:"var(--text)" }}>
@@ -244,7 +244,7 @@ function DashboardContent() {
             </span>
           </button>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <div className="dashboard-nav-actions" style={{ display:"flex", alignItems:"center", gap:10 }}>
           {auth?.user?.image && (
             <img src={auth.user.image} alt=""
               style={{ width:30, height:30, borderRadius:"50%", border:"2px solid var(--border-2)" }}/>
@@ -265,10 +265,10 @@ function DashboardContent() {
       </nav>
 
       {/* LAYOUT */}
-      <div style={{ flex:1, display:"flex", overflow:"hidden", position:"relative", zIndex:1 }}>
+      <div className="dashboard-layout" style={{ flex:1, display:"flex", overflow:"hidden", position:"relative", zIndex:1 }}>
 
         {/* SIDEBAR */}
-        <aside style={{ width:264, borderRight:"1px solid var(--border)", display:"flex", flexDirection:"column", overflow:"hidden", flexShrink:0 }}>
+        <aside className="dashboard-sidebar" style={{ width:264, borderRight:"1px solid var(--border)", display:"flex", flexDirection:"column", overflow:"hidden", flexShrink:0 }}>
           <div style={{ padding:"16px", borderBottom:"1px solid var(--border)" }}>
             <p className="label-mono" style={{ marginBottom:4 }}>Interview History</p>
             <p style={{ fontSize:11, color:"var(--text-3)" }}>
@@ -339,7 +339,7 @@ function DashboardContent() {
         </aside>
 
         {/* MAIN */}
-        <div style={{ flex:1, overflowY:"auto", padding:"28px 32px" }}>
+        <div className="dashboard-main" style={{ flex:1, overflowY:"auto", padding:"28px 32px" }}>
 
           {/* No session selected — overview */}
           {!selectedId && (
@@ -566,7 +566,7 @@ function DashboardContent() {
                   </div>
 
                   {/* Sub-tabs */}
-                  <div style={{ display:"flex", gap:4, marginBottom:20, background:"var(--glass-inner)", padding:4, borderRadius:14, border:"1px solid var(--border)" }}>
+                  <div className="dashboard-tabs" style={{ display:"flex", gap:4, marginBottom:20, background:"var(--glass-inner)", padding:4, borderRadius:14, border:"1px solid var(--border)" }}>
                     {(["overview","answers","plan"] as const).map(t => (
                       <button key={t} onClick={() => setActiveTab(t)} style={{
                         flex:1, padding:"8px", borderRadius:10,
@@ -746,6 +746,27 @@ function DashboardContent() {
           )}
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 800px) {
+          .dashboard-layout { flex-direction: column !important; overflow: visible !important; }
+          .dashboard-sidebar { width: 100% !important; max-height: 220px; border-right: 0 !important; border-bottom: 1px solid var(--border); }
+          .dashboard-main { width: 100%; overflow: visible !important; padding: 24px 20px !important; }
+        }
+
+        @media (max-width: 560px) {
+          .dashboard-nav { min-height: 58px; height: auto; padding: 10px 14px; gap: 8px; }
+          .dashboard-nav-actions { gap: 6px !important; margin-left: auto; }
+          .dashboard-nav-actions > img,
+          .dashboard-nav-actions > span,
+          .dashboard-nav-actions .btn-ghost { display: none; }
+          .dashboard-nav-actions .btn-primary { padding: 8px 10px !important; font-size: 11px !important; }
+          .dashboard-main { padding: 20px 14px !important; }
+          .dashboard-tabs { overflow-x: auto; scrollbar-width: none; }
+          .dashboard-tabs::-webkit-scrollbar { display: none; }
+          .dashboard-tabs button { min-width: max-content; padding-left: 10px !important; padding-right: 10px !important; }
+        }
+      `}</style>
     </div>
   );
 }

@@ -170,7 +170,7 @@ function InterviewContent() {
 
   /* ── Loading ── */
   if (loading) return (
-    <div style={{ minHeight:"100vh", background:"var(--bg)", color:"var(--text)", display:"flex", flexDirection:"column" }}>
+    <div className="interview-page" style={{ minHeight:"100vh", background:"var(--bg)", color:"var(--text)", display:"flex", flexDirection:"column" }}>
       <div className="aurora-bg"><div className="aurora-orb"/></div>
       <nav className="site-nav">
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -223,7 +223,7 @@ function InterviewContent() {
       <div className="aurora-bg"><div className="aurora-orb"/></div>
 
       {/* NAV */}
-      <nav className="site-nav" style={{ flexShrink:0 }}>
+      <nav className="site-nav interview-nav" style={{ flexShrink:0 }}>
         <button
           onClick={() => { if (confirm("Exit? Progress will be lost.")) window.location.href="/"; }}
           style={{ display:"flex", alignItems:"center", gap:10, background:"none", border:"none", cursor:"pointer", color:"var(--text)" }}
@@ -233,7 +233,7 @@ function InterviewContent() {
         </button>
 
         {/* Progress */}
-        <div style={{ display:"flex", alignItems:"center", gap:10, flex:1, maxWidth:300, margin:"0 auto" }}>
+        <div className="interview-progress" style={{ display:"flex", alignItems:"center", gap:10, flex:1, maxWidth:300, margin:"0 auto" }}>
           <span className="label-mono" style={{ flexShrink:0 }}>Q{idx+1}/{questions.length}</span>
           <div className="progress-track" style={{ flex:1 }}>
             <div className="progress-fill" style={{ width:`${progress}%` }}/>
@@ -260,14 +260,14 @@ function InterviewContent() {
       </nav>
 
       {/* SPLIT LAYOUT */}
-      <div style={{
+      <div className="interview-layout" style={{
         flex:1, display:"flex", flexDirection:"row",
         overflow:"hidden", position:"relative", zIndex:1,
         minHeight:"calc(100vh - 62px)",
       }}>
 
         {/* LEFT */}
-        <div style={{ width:"50%", minWidth:0, display:"flex", flexDirection:"column", borderRight:"1px solid var(--border)", overflow:"hidden" }}>
+        <div className="interview-question-panel" style={{ width:"50%", minWidth:0, display:"flex", flexDirection:"column", borderRight:"1px solid var(--border)", overflow:"hidden" }}>
 
           {/* AI avatar */}
           <div style={{ padding:"18px 24px", borderBottom:"1px solid var(--border)", background:"var(--glass-inner)", flexShrink:0 }}>
@@ -304,7 +304,7 @@ function InterviewContent() {
           </div>
 
           {/* Scrollable content */}
-          <div style={{ flex:1, padding:"20px 24px", overflowY:"auto", display:"flex", flexDirection:"column", gap:16 }}>
+          <div className="interview-question-content" style={{ flex:1, padding:"20px 24px", overflowY:"auto", display:"flex", flexDirection:"column", gap:16 }}>
 
             {/* Question */}
             <div>
@@ -388,7 +388,7 @@ function InterviewContent() {
           </div>
 
           {/* Bottom nav */}
-          <div style={{ padding:"14px 24px", borderTop:"1px solid var(--border)", background:"var(--glass-inner)", flexShrink:0, display:"flex", gap:10 }}>
+          <div className="interview-bottom-nav" style={{ padding:"14px 24px", borderTop:"1px solid var(--border)", background:"var(--glass-inner)", flexShrink:0, display:"flex", gap:10 }}>
             <button className="btn-ghost" style={{ flex:1 }}
               disabled={idx === 0 || submitting}
               onClick={() => { setIdx(i => i-1); setAnswer(""); setLastFeedback(""); setLastScore(null); setTimerPulse(false); }}>
@@ -413,8 +413,8 @@ function InterviewContent() {
         </div>
 
         {/* RIGHT */}
-        <div style={{ width:"50%", minWidth:0, display:"flex", flexDirection:"column", overflow:"hidden" }}>
-          <div style={{ flex:1, padding:"20px 24px", display:"flex", flexDirection:"column", gap:14, overflowY:"auto" }}>
+        <div className="interview-answer-panel" style={{ width:"50%", minWidth:0, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+          <div className="interview-answer-content" style={{ flex:1, padding:"20px 24px", display:"flex", flexDirection:"column", gap:14, overflowY:"auto" }}>
 
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <p className="label-mono">Your Answer</p>
@@ -430,7 +430,7 @@ function InterviewContent() {
               value={answer}
               onChange={e => setAnswer(e.target.value)}
               placeholder="Type your answer here, or use the microphone below.&#10;&#10;Be specific — use examples from your experience. Apply the STAR method."
-              className="pm-input"
+              className="pm-input interview-answer-input"
               style={{ flex:1, minHeight:200, lineHeight:1.75 }}
             />
 
@@ -489,6 +489,18 @@ function InterviewContent() {
           0%,100% { transform:scale(1);   box-shadow:0 0 0 0 rgba(239,68,68,0); }
           50%      { transform:scale(1.04); box-shadow:0 0 0 4px rgba(239,68,68,0.2); }
         }
+
+        @media (max-width: 760px) {
+          .interview-nav { padding: 8px 14px; gap: 10px; }
+          .interview-nav > button span { font-size: 14px !important; }
+          .interview-progress { order: 3; flex-basis: 100%; max-width: none !important; margin: 0 !important; }
+          .interview-layout { flex-direction: column !important; overflow: visible !important; min-height: 0 !important; }
+          .interview-question-panel, .interview-answer-panel { width: 100% !important; overflow: visible !important; }
+          .interview-question-panel { border-right: 0 !important; border-bottom: 1px solid var(--border); }
+          .interview-question-content, .interview-answer-content { flex: none !important; overflow: visible !important; padding: 18px 16px !important; }
+          .interview-bottom-nav { padding: 12px 16px !important; }
+          .interview-answer-input { flex: none !important; min-height: 260px !important; }
+        }
       `}</style>
     </div>
   );
@@ -497,3 +509,4 @@ function InterviewContent() {
 export default function InterviewPage() {
   return <Suspense><InterviewContent /></Suspense>;
 }
+

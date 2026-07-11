@@ -150,12 +150,12 @@ export default function UploadPage() {
   const selectedDifficulty = DIFFICULTIES.find(d => d.id === difficulty)!;
 
   return (
-    <div style={{ minHeight:"100vh", background:"var(--bg)", color:"var(--text)" }}>
+    <div className="upload-page" style={{ minHeight:"100vh", background:"var(--bg)", color:"var(--text)" }}>
       <div className="aurora-bg"><div className="aurora-orb"/></div>
       <div className="grid-overlay"/>
 
       {/* NAV */}
-      <nav className="site-nav">
+      <nav className="site-nav upload-nav">
         <button onClick={() => { window.location.href="/"; }}
           style={{ display:"flex", alignItems:"center", gap:10, background:"none", border:"none", cursor:"pointer", color:"var(--text)" }}>
           <div className="logo-mark">P</div>
@@ -165,7 +165,7 @@ export default function UploadPage() {
         </button>
 
         {/* Step tracker */}
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <div className="upload-steps" style={{ display:"flex", alignItems:"center", gap:10 }}>
           {[
             { n:1, label:"Setup" },
             { n:2, label:"Interview" },
@@ -195,7 +195,7 @@ export default function UploadPage() {
       </nav>
 
       {/* MAIN */}
-      <div style={{
+      <div className="upload-main" style={{
         position:"relative", zIndex:1,
         maxWidth:640, margin:"0 auto",
         padding:"44px 24px 80px",
@@ -250,7 +250,7 @@ export default function UploadPage() {
         {!loading && (
           <div className="anim-fade-up glass-card" style={{ padding:"20px 22px" }}>
             <p className="label-mono" style={{ marginBottom:14 }}>⚡ Difficulty Level</p>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10 }}>
+            <div className="difficulty-grid" style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:10 }}>
               {DIFFICULTIES.map(d => (
                 <button
                   key={d.id}
@@ -451,6 +451,19 @@ export default function UploadPage() {
           Your resume is processed securely · Never stored permanently
         </p>
       </div>
+
+      <style>{`
+        @media (max-width: 640px) {
+          .upload-nav { padding: 8px 14px; }
+          .upload-steps { gap: 5px !important; }
+          .upload-steps > div { gap: 5px !important; }
+          .upload-steps span { display: none; }
+          .upload-steps > div > div:last-child { width: 16px !important; }
+          .upload-main { padding: 28px 16px 56px !important; }
+          .difficulty-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        }
+      `}</style>
     </div>
   );
 }
+

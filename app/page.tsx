@@ -135,7 +135,7 @@ export default function LandingPage() {
       />
 
       {/* ── NAV ──────────────────────────────────────────────────────────── */}
-      <nav className="site-nav">
+      <nav className="site-nav landing-nav">
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div className="logo-mark">P</div>
           <span style={{ fontWeight:800, fontSize:18, letterSpacing:"-0.025em" }}>
@@ -143,7 +143,7 @@ export default function LandingPage() {
           </span>
         </div>
 
-        <div style={{ display:"flex", alignItems:"center", gap:28 }}>
+        <div className="landing-nav-links" style={{ display:"flex", alignItems:"center", gap:28 }}>
           {["Features","How it works","Companies"].map(l => (
             <button
               key={l}
@@ -155,7 +155,7 @@ export default function LandingPage() {
           ))}
         </div>
 
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <div className="landing-nav-actions" style={{ display:"flex", alignItems:"center", gap:10 }}>
           <ThemeToggle />
           {session ? (
             <button className="btn-primary" style={{ padding:"9px 20px", fontSize:13 }}
@@ -180,6 +180,7 @@ export default function LandingPage() {
       {/* ── HERO + AGENT PIPELINE ─────────────────────────────────────────── */}
       <div
         ref={heroRef}
+        className="hero-grid"
         onMouseMove={handleMouseMove}
         style={{
           position:"relative", zIndex:1,
@@ -191,6 +192,7 @@ export default function LandingPage() {
       >
         {/* Left: hero copy */}
         <div
+          className="hero-copy"
           style={{
             display:"flex", flexDirection:"column", justifyContent:"center",
             padding:"72px 56px",
@@ -275,6 +277,7 @@ export default function LandingPage() {
 
         {/* Right: agent pipeline */}
         <div
+          className="agent-pipeline"
           style={{
             display:"flex", flexDirection:"column", justifyContent:"center",
             padding:"40px 28px",
@@ -334,6 +337,7 @@ export default function LandingPage() {
       {/* ── FEATURES ─────────────────────────────────────────────────────── */}
       <section
         id="features"
+        className="landing-section"
         style={{ position:"relative", zIndex:1, padding:"96px 56px", maxWidth:1200, margin:"0 auto" }}
       >
         <div style={{ textAlign:"center", marginBottom:56 }}>
@@ -372,6 +376,7 @@ export default function LandingPage() {
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
       <section
         id="how-it-works"
+        className="landing-section landing-steps"
         style={{
           position:"relative", zIndex:1,
           padding:"80px 56px",
@@ -423,6 +428,7 @@ export default function LandingPage() {
       {/* ── COMPANIES ────────────────────────────────────────────────────── */}
       <section
         id="companies"
+        className="landing-section landing-companies"
         style={{ position:"relative", zIndex:1, padding:"72px 56px", maxWidth:1000, margin:"0 auto", textAlign:"center" }}
       >
         <p className="label-mono" style={{ marginBottom:20 }}>Practice for these companies</p>
@@ -448,6 +454,7 @@ export default function LandingPage() {
 
       {/* ── CTA ──────────────────────────────────────────────────────────── */}
       <section
+        className="landing-cta"
         style={{
           position:"relative", zIndex:1,
           padding:"80px 40px",
@@ -493,7 +500,25 @@ export default function LandingPage() {
 
       <style>{`
         @media (max-width: 900px) {
-          .hero-grid { grid-template-columns: 1fr !important; }
+          .hero-grid { grid-template-columns: 1fr !important; min-height: auto !important; }
+          .hero-copy { border-right: 0 !important; padding: 56px 32px !important; }
+          .agent-pipeline { border-left: 0 !important; border-top: 1px solid var(--border); padding: 36px 32px !important; }
+          .landing-section { padding-left: 32px !important; padding-right: 32px !important; }
+          .landing-steps > div > div:last-child { grid-template-columns: 1fr !important; gap: 16px !important; }
+        }
+
+        @media (max-width: 640px) {
+          .landing-nav { min-height: 58px; height: auto; padding: 10px 14px; gap: 10px; }
+          .landing-nav-links { display: none !important; }
+          .landing-nav-actions { gap: 6px !important; margin-left: auto; }
+          .landing-nav-actions .btn-ghost { display: none; }
+          .landing-nav-actions .btn-primary { padding: 8px 12px !important; font-size: 12px !important; }
+          .hero-copy { padding: 44px 20px !important; }
+          .agent-pipeline { padding: 28px 20px !important; }
+          .landing-section { padding: 52px 20px !important; }
+          .landing-companies { padding-top: 48px !important; padding-bottom: 48px !important; }
+          .landing-cta { padding: 56px 20px !important; }
+          .landing-cta .btn-primary { width: 100%; max-width: 340px; padding-left: 20px !important; padding-right: 20px !important; }
         }
       `}</style>
     </div>

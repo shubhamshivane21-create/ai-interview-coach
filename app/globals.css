@@ -81,7 +81,7 @@
   padding: 0;
 }
 
-html { scroll-behavior: smooth; height: 100%; }
+html { scroll-behavior: smooth; height: 100%; width: 100%; overflow-x: hidden; }
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -90,9 +90,18 @@ body {
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  width: 100%;
+  overflow-x: clip;
   transition: background-color 0.3s ease, color 0.3s ease;
   min-height: 100vh;
+}
+
+/* Keep flex and grid children from forcing a horizontal page scroll on phones. */
+button, input, textarea, select, img, svg { max-width: 100%; }
+
+@media (max-width: 640px) {
+  .glass-card { border-radius: 16px; }
+  .btn-primary, .btn-ghost { min-height: 44px; }
 }
 
 .font-mono {

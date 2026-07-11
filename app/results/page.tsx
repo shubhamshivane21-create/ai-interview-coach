@@ -263,19 +263,19 @@ function ResultsContent() {
   const difficultyColor = DIFF_COLORS[difficulty]    || "#f59e0b";
 
   return (
-    <div style={{ minHeight:"100vh", background:"var(--bg)", color:"var(--text)" }}>
+    <div className="results-page" style={{ minHeight:"100vh", background:"var(--bg)", color:"var(--text)" }}>
       <Confetti active={confetti} />
       <div className="aurora-bg"><div className="aurora-orb"/></div>
       <div className="grid-overlay"/>
 
       {/* NAV */}
-      <nav className="site-nav">
+      <nav className="site-nav results-nav">
         <button onClick={() => { window.location.href="/"; }}
           style={{ display:"flex", alignItems:"center", gap:10, background:"none", border:"none", cursor:"pointer", color:"var(--text)" }}>
           <div className="logo-mark">P</div>
           <span style={{ fontWeight:800, fontSize:17 }}>PrepMind<span style={{ color:"var(--green)" }}> AI</span></span>
         </button>
-        <div style={{ display:"flex", gap:8 }}>
+        <div className="results-nav-actions" style={{ display:"flex", gap:8 }}>
           <button className="btn-ghost" style={{ fontSize:12, padding:"8px 14px" }}
             onClick={() => { window.location.href="/upload"; }}>New Interview</button>
           <button className="btn-ghost" style={{ fontSize:12, padding:"8px 14px" }}
@@ -284,7 +284,7 @@ function ResultsContent() {
         </div>
       </nav>
 
-      <div style={{ position:"relative", zIndex:1, maxWidth:900, margin:"0 auto", padding:"44px 24px 80px" }}>
+      <div className="results-main" style={{ position:"relative", zIndex:1, maxWidth:900, margin:"0 auto", padding:"44px 24px 80px" }}>
 
         {/* Header */}
         <div className="anim-fade-up" style={{ textAlign:"center", marginBottom:32 }}>
@@ -354,7 +354,7 @@ function ResultsContent() {
         </div>
 
         {/* Tab bar */}
-        <div style={{
+        <div className="results-tabs" style={{
           display:"flex", gap:4, marginBottom:20,
           background:"var(--glass-inner)", padding:4,
           borderRadius:14, border:"1px solid var(--border)",
@@ -428,7 +428,7 @@ function ResultsContent() {
             )}
 
             {/* Strengths / Weaknesses */}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+            <div className="results-summary-grid" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
               {/* Strengths */}
               <div className="glass-green" style={{ padding:"18px 20px" }}>
                 <p className="label-accent" style={{ marginBottom:12 }}>💪 Strengths</p>
@@ -551,6 +551,18 @@ function ResultsContent() {
           </button>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 640px) {
+          .results-nav { padding: 8px 14px; gap: 8px; }
+          .results-nav-actions .btn-ghost { padding: 8px 10px !important; font-size: 11px !important; }
+          .results-main { padding: 28px 16px 56px !important; }
+          .results-tabs { overflow-x: auto; scrollbar-width: none; }
+          .results-tabs::-webkit-scrollbar { display: none; }
+          .results-tabs button { min-width: max-content; padding-left: 10px !important; padding-right: 10px !important; }
+          .results-summary-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -558,3 +570,4 @@ function ResultsContent() {
 export default function ResultsPage() {
   return <Suspense><ResultsContent/></Suspense>;
 }
+

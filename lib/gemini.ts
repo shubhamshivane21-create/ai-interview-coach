@@ -1,5 +1,5 @@
 /**
- * Shared Gemini API client — raw fetch only, no SDK.
+ * Shared Gemini API client â€” raw fetch only, no SDK.
  * Primary: gemini-2.0-flash (stable GA)
  * Fallback: gemini-1.5-flash (proven reliable)
  */
