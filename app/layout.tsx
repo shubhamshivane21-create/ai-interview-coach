@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import "./globals.css";
 import Providers from "./providers";
 
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {`(function(){try{var t=localStorage.getItem('pm-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`}
         </Script>
         <Providers>{children}</Providers>
+        <SpeedInsights />
       </body>
     </html>
   );
