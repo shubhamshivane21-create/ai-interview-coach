@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
 import Providers from "./providers";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "PrepMind AI — AI Interview Coach",
@@ -27,6 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {`(function(){try{var t=localStorage.getItem('pm-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`}
         </Script>
         <Providers>{children}</Providers>
+        <SpeedInsights />
       </body>
     </html>
   );
